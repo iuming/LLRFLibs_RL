@@ -1,0 +1,14 @@
+# Beam-loading compensation (Level L4) — LLRFLibs_RL experiment spec.
+experiment:
+  env: BeamLoading-v0
+  algorithm: ppo
+  timesteps: 20000
+  seed: 0
+  baseline: pi
+  runs_dir: runs
+
+notes: >
+  The beam steps on during the flattop while the analytical feedforward is
+  built beam-free.  Compare the RL residual against the complex-PI baseline:
+  the droop is a small but measurable tracking error that a residual policy
+  can compensate.

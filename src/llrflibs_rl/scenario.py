@@ -77,7 +77,7 @@ def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: in
         obs, reward, terminated, truncated, info = env.step(action)
         rewards.append(float(reward))
         tracked[i] = env.tracked_signal
-        drive[i] = env.drive_total
+        drive[i] = getattr(env, "drive_total", 0.0 + 0.0j)
         if hasattr(env, "plant") and hasattr(env.plant, "detuning"):
             detuning[i] = env.plant.detuning
         if hasattr(env, "actuator"):
@@ -101,6 +101,11 @@ def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: in
         result["disturbance"] = disturbance[:steps]
     if per_cavity_history:
         result["per_cavity"] = np.asarray(per_cavity_history, dtype=np.complex128).T
+    if hasattr(env, "pulse_reward_history") and env.pulse_reward_history:
+        result["pulse_rewards"] = np.asarray(env.pulse_reward_history, dtype=np.float64)
+        result["pulse_errors"] = np.asarray(
+            [abs(e) for e in env.pulse_error_history], dtype=np.float64
+        )
     return result
 
 
@@ -312,6 +317,63 @@ def _plot_resonance(
 # Full experiment
 # ---------------------------------------------------------------------------
 
+def _plot_adaptive_pulse(
+    env,
+    baseline: Dict[str, np.ndarray],
+    rl: Dict[str, np.ndarray],
+    baseline_name: str,
+    curve: Optional[List[Dict[str, float]]],
+    path: Path,
+) -> None:
+    """Per-pulse reward/error and convergence for the pulse-level scenario."""
+    t = np.arange(len(baseline["pulse_rewards"]))
+    fig, axes = plt.subplots(2, 2, figsize=(13.5, 8.5), constrained_layout=True)
+    fig.suptitle(f"{type(env).__name__}  —  {baseline_name} (baseline) vs RL", fontsize=13,
+                 fontweight="bold")
+
+    axes[0, 0].plot(t, baseline["pulse_rewards"], "--", marker="o", ms=3, label=baseline_name)
+    axes[0, 0].plot(t, rl["pulse_rewards"], marker="o", ms=3, label="RL")
+    axes[0, 0].set_title("Reward per pulse")
+    axes[0, 0].set_xlabel("pulse")
+    axes[0, 0].set_ylabel("reward")
+    axes[0, 0].legend(frameon=False)
+
+    scale = env.obs_scale
+    axes[0, 1].plot(t, baseline["pulse_errors"] / scale, "--", marker="o", ms=3, label=baseline_name)
+    axes[0, 1].plot(t, rl["pulse_errors"] / scale, marker="o", ms=3, label="RL")
+    axes[0, 1].set_title("Flat-top tracking error (fraction of target)")
+    axes[0, 1].set_xlabel("pulse")
+    axes[0, 1].legend(frameon=False)
+
+    axes[1, 0].set_title("RL evaluation reward during training")
+    curve_data = _plot_tracking_curve(curve)
+    if curve_data is not None:
+        xs, ys = curve_data
+        axes[1, 0].plot(xs, ys, marker=".", markersize=4)
+        axes[1, 0].set_xlabel("timesteps (pulses)")
+        axes[1, 0].set_ylabel("reward")
+    else:
+        axes[1, 0].axis("off")
+        axes[1, 0].text(0.5, 0.5, "no training curve", ha="center", va="center")
+
+    axes[1, 1].axis("off")
+    text = (
+        f"Baseline ({baseline_name}):\n"
+        f"  summed reward = {baseline['reward'][0]:,.1f}\n"
+        f"  mean |fferr|  = {float(np.mean(baseline['pulse_errors']) / scale):.4f}\n\n"
+        f"RL:\n"
+        f"  summed reward = {rl['reward'][0]:,.1f}\n"
+        f"  mean |fferr|  = {float(np.mean(rl['pulse_errors']) / scale):.4f}"
+    )
+    axes[1, 1].text(0.05, 0.95, text, transform=axes[1, 1].transAxes, va="top", fontsize=10,
+                    family="monospace")
+
+    for a in axes.flat:
+        a.grid(True, alpha=0.25)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
 def run_experiment(
     env_id: str,
     timesteps: Optional[int] = None,
@@ -411,7 +473,9 @@ def run_experiment(
         probe = make(env_id)
         probe.reset(seed=seeds[0])
         plot_path = artifacts.dir / f"comparison_{baseline}.png"
-        if getattr(probe, "reference_sp", None) is None:
+        if type(probe).__name__ == "AdaptivePulseEnv":
+            _plot_adaptive_pulse(probe, baseline_wave, rl_wave, baseline, curve, plot_path)
+        elif getattr(probe, "reference_sp", None) is None:
             _plot_resonance(probe, baseline_wave, rl_wave, baseline, curve, plot_path)
         else:
             _plot_tracking(probe, baseline_wave, rl_wave, baseline, curve, plot_path)

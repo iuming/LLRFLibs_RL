@@ -68,6 +68,15 @@ def _error_of(env) -> complex:
     return sp - tracked
 
 
+def _action_vector(env, values: np.ndarray) -> np.ndarray:
+    """Pack a compact action into the full (possibly wider) action space."""
+    num = int(np.prod(env.action_space.shape))
+    full = np.zeros(num, dtype=np.float32)
+    n = min(int(values.size), num)
+    full[:n] = np.asarray(values, dtype=np.float32)[:n]
+    return full
+
+
 def make_pi_residual_policy(
     env,
     kp: float = 0.8,
@@ -90,12 +99,15 @@ def make_pi_residual_policy(
         state["integral"] += error * env.config.Ts
         correction = -(kp * error + ki * state["integral"])
         limit = max(env.drive_limit, 1.0)
-        return np.array(
-            [
-                np.clip(correction.real / limit, -1.0, 1.0),
-                np.clip(correction.imag / limit, -1.0, 1.0),
-            ],
-            dtype=np.float32,
+        return _action_vector(
+            env,
+            np.array(
+                [
+                    np.clip(correction.real / limit, -1.0, 1.0),
+                    np.clip(correction.imag / limit, -1.0, 1.0),
+                ],
+                dtype=np.float32,
+            ),
         )
 
     return _policy
@@ -134,12 +146,15 @@ def make_adrc_like_policy(
         reflected = env.plant.vr if hasattr(env.plant, "vr") else env.plant.reflected_sum
         correction = -(kp * error + ki * state["integral"] + kd * rate) - reflection_gain * reflected
         limit = max(env.drive_limit, 1.0)
-        return np.array(
-            [
-                np.clip(correction.real / limit, -1.0, 1.0),
-                np.clip(correction.imag / limit, -1.0, 1.0),
-            ],
-            dtype=np.float32,
+        return _action_vector(
+            env,
+            np.array(
+                [
+                    np.clip(correction.real / limit, -1.0, 1.0),
+                    np.clip(correction.imag / limit, -1.0, 1.0),
+                ],
+                dtype=np.float32,
+            ),
         )
 
     return _policy
@@ -209,21 +224,23 @@ def make_baseline_policy(
     if name == "pi":
         if cls == "CavityVoltageEnv":
             return make_pi_residual_policy(env, kp=kp, ki=ki)
-        if cls == "VectorSumEnv":
+        if cls in ("VectorSumEnv", "BeamLoadingEnv"):
             return make_pi_residual_policy(env, kp=kp, ki=ki)
         if cls in ("FrequencyEnv", "DualLoopEnv"):
             return make_detuning_pi_policy(env, kp=kp, ki=ki)
-        if cls in ("PIAssistEnv", "ADRCAssistEnv"):
-            # The classical controller is already the inner loop.
+        if cls in ("PIAssistEnv", "ADRCAssistEnv", "GainSchedulingEnv", "AdaptivePulseEnv"):
+            # The classical controller is already the inner loop (assist), or
+            # the fixed gains are exactly the zero action (gain scheduling),
+            # or no classical pulse-level policy exists (adaptive pulse).
             return zero_policy(env)
         return zero_policy(env)
 
     if name == "adrc":
-        if cls in ("CavityVoltageEnv", "VectorSumEnv"):
+        if cls in ("CavityVoltageEnv", "VectorSumEnv", "BeamLoadingEnv"):
             return make_adrc_like_policy(env, kp=kp, ki=ki)
         if cls in ("FrequencyEnv", "DualLoopEnv"):
             return make_detuning_pi_policy(env, kp=kp, ki=ki)
-        if cls in ("PIAssistEnv", "ADRCAssistEnv"):
+        if cls in ("PIAssistEnv", "ADRCAssistEnv", "GainSchedulingEnv", "AdaptivePulseEnv"):
             return zero_policy(env)
         return zero_policy(env)
 

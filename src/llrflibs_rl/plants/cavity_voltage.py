@@ -107,6 +107,7 @@ class CavityVoltagePlant:
         drive: complex,
         beam: Optional[complex] = None,
         detuning: Optional[float] = None,
+        half_bw: Optional[float] = None,
     ) -> Tuple[complex, complex]:
         """Advance the cavity one sample.
 
@@ -115,6 +116,8 @@ class CavityVoltagePlant:
             beam:     Beam-drive voltage, V (required when beam loading is on).
             detuning: Instantaneous detuning, rad/s.  When given, the
                       time-varying (Euler) path is used.
+            half_bw:  Optional instantaneous half bandwidth, rad/s (used by the
+                      time-varying path; defaults to ``cavity.half_bw``).
 
         Returns:
             Tuple of ``(vc_next, vr_next)``.
@@ -144,8 +147,9 @@ class CavityVoltagePlant:
             self._state_rf = state_rf
             self._state_bm = state_bm
         else:
+            hbw = self.cavity.half_bw if half_bw is None else float(half_bw)
             status, vc_next, vr_next = sim_ncav_step_simple(
-                self.cavity.half_bw,
+                hbw,
                 detuning,
                 drive,
                 vb_step,

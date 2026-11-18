@@ -39,21 +39,32 @@ The task zoo follows the natural hierarchy of LLRF control:
 
 | Level | Control problem | Environment |
 |---|---|---|
-| L0 | Single-cavity fast RF voltage/phase (residual and inner-loop assist) | `CavityVoltage-v0`, `PIAssist-v0`, `ADRCAssist-v0` |
+| L0 | Single-cavity fast RF voltage/phase (residual and inner-loop assist) | `CavityVoltage-v0`, `PIAssist-v0`, `ADRCAssist-v0`, `GainScheduling-v0` |
 | L1 | Resonance / slow tuner-piezo compensation | `FrequencyControl-v0` |
 | L2 | Hierarchical fast + slow cooperation | `DualLoop-v0` |
-| L3 | Multi-cavity vector-sum module control | `VectorSum-v0` |
+| L3 | Multi-cavity vector-sum module control (shared RF source, optional per-cavity tuners) | `VectorSum-v0`, `VectorSumTuner-v0` |
+| L4 | Beam-loading transients & pulse-to-pulse adaptation | `BeamLoading-v0`, `AdaptivePulse-v0` |
+
+`GainScheduling-v0` is the "RL shapes the controller" channel: the policy
+picks `kp`/`ki` sample-by-sample instead of adding a residual on top of the
+tuned inner loop. `AdaptivePulse-v0` is a pulse-level MDP in which one
+environment step is one complete pulse and the agent corrects the feedforward
+from the previous pulse's error — the RL counterpart of an ILC table.
 
 Each environment = **plant + task + optional inner controller + reward**,
 assembled in the `envs/` layer from reusable components:
 
 ```
-envs/voltage.py      CavityVoltageEnv       (L0, residual)
-                     PIAssistEnv            (L0, PI inner loop + RL assist)
-                     ADRCAssistEnv          (L0, ADRC inner loop + RL assist)
-envs/resonance.py    FrequencyEnv           (L1, RL tuner, constant drive)
-                     DualLoopEnv            (L2, PI fast loop + RL tuner)
-envs/vectormodule.py VectorSumEnv           (L3, shared source)
+envs/voltage.py         CavityVoltageEnv       (L0, residual)
+                        PIAssistEnv            (L0, PI inner loop + RL assist)
+                        ADRCAssistEnv          (L0, ADRC inner loop + RL assist)
+envs/gain_scheduling.py GainSchedulingEnv      (L0, RL-scheduled PI gains)
+envs/resonance.py       FrequencyEnv           (L1, RL tuner, constant drive)
+                        DualLoopEnv            (L2, PI fast loop + RL tuner)
+envs/vectormodule.py    VectorSumEnv           (L3, shared source; optional
+                                                   per-cavity slow tuners)
+envs/pulse_to_pulse.py  BeamLoadingEnv         (L4, beam step vs beam-free FF)
+                        AdaptivePulseEnv       (L4, pulse-to-pulse FF)
 ```
 
 ## 3. Package layout
@@ -68,8 +79,8 @@ src/llrflibs_rl/
   configs/           cavity.py · env.py · task.py · controller.py · agent.py
   plants/            cavity_voltage.py · resonance.py · vectormodule.py · disturbance.py
   tasks/             reference.py · observations.py · rewards.py · events.py
-  controllers/       feedback.py (PI/ADRC) · feedforward.py (FF/ILC) · resonance.py (actuator)
-  envs/              core.py · voltage.py · resonance.py · vectormodule.py · wrappers.py
+  controllers/       feedback.py (PI/ADRC) · feedforward.py (FF/ILC) · resonance.py (actuator) · baselines.py
+  envs/              core.py · voltage.py · gain_scheduling.py · resonance.py · vectormodule.py · pulse_to_pulse.py · wrappers.py
   agents/            trainer.py (train/train_ppo/train_sac) · presets.py
   evaluation/        metrics.py · reporting.py
   scripts/           run.py (CLI: list/train/eval/benchmark)

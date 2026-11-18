@@ -1,0 +1,14 @@
+# Pulse-to-pulse adaptive feedforward (Level L4) — LLRFLibs_RL experiment spec.
+experiment:
+  env: AdaptivePulse-v0
+  algorithm: ppo
+  timesteps: 10000
+  seed: 0
+  baseline: zero
+  runs_dir: runs
+
+notes: >
+  Each environment step is one full pulse; the agent tunes per-segment
+  multiplicative feedforward corrections from the previous pulse's error while
+  the detuning drifts pulse to pulse.  The zero baseline is the nominal
+  feedforward repeated on every pulse.

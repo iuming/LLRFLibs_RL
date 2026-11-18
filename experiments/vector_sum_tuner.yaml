@@ -1,0 +1,13 @@
+# Vector-sum with per-cavity slow tuners (Level L3+) — experiment spec.
+experiment:
+  env: VectorSumTuner-v0
+  algorithm: ppo
+  timesteps: 80000
+  seed: 0
+  baseline: zero
+  runs_dir: runs
+
+notes: >
+  A shared RF source plus one first-order tuner actuator per cavity.  The
+  action is [I/Q residual, tuner_1, ..., tuner_n]; the agent must balance the
+  fast shared drive against the slow per-cavity resonance compensation.

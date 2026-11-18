@@ -122,12 +122,34 @@ class CavityVoltageEnv(BaseLLRFEnv):
             )
         else:
             self._detuning_wave = None
+        # Half-bandwidth drift forces the time-varying plant path.
+        if self.env_cfg.half_bw_drift_frac > 0.0 and self._detuning_wave is None:
+            self._detuning_wave = np.full(self.episode_len, float(detuning))
+
+    def _current_half_bw(self) -> Optional[float]:
+        """Half bandwidth of the current sample (``None`` when not drifting)."""
+        if self.env_cfg.half_bw_drift_frac <= 0.0:
+            return None
+        frac = self.env_cfg.half_bw_drift_frac * self._step_index / max(self.episode_len - 1, 1)
+        return float(self.cavity.half_bw * (1.0 + frac))
+
+    def _check_reflect_trip(self, reflected: complex) -> bool:
+        """Update the reflected-power streak; return True when the trip fires."""
+        limit = self.env_cfg.reflected_power_limit
+        if limit is None:
+            self._reflect_streak = 0
+            return False
+        if abs(reflected) > float(limit):
+            self._reflect_streak += 1
+        else:
+            self._reflect_streak = 0
+        return self._reflect_streak >= int(self.env_cfg.reflected_power_trip_steps)
 
     def _get_obs(self) -> np.ndarray:
         idx = min(self._step_index, self.episode_len - 1)
         sp = self._reference.sp_at(idx)
         vf_ff = self._reference.vf_ff_at(idx)
-        vb = self._reference.vb_at(idx)
+        vb = self._beam_at(idx)
         err = sp - self._plant.vc
         return build_voltage_obs(
             vc=self._plant.vc,
@@ -142,6 +164,17 @@ class CavityVoltageEnv(BaseLLRFEnv):
             step_index=self._step_index,
             episode_len=self.episode_len,
         )
+
+    def _beam_at(self, step_index: int) -> complex:
+        """Beam-drive voltage at a sample index (overridable by subclasses).
+
+        Args:
+            step_index: Sample index.
+
+        Returns:
+            Beam-drive voltage, V.
+        """
+        return self._reference.vb_at(step_index)
 
     def _make_info(self) -> Dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
@@ -199,6 +232,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._last_action = 0.0 + 0.0j
         self._drive_total = self._reference.vf_ff_at(0)
         self._step_index = 0
+        self._reflect_streak = 0
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
@@ -215,9 +249,10 @@ class CavityVoltageEnv(BaseLLRFEnv):
         )
         drive = self._delay_drive(drive)
 
-        beam = self._reference.vb_at(idx)
+        beam = self._beam_at(idx)
         dw = float(self._detuning_wave[idx]) if self._detuning_wave is not None else None
-        self._plant.step(drive, beam=beam, detuning=dw)
+        hbw = self._current_half_bw()
+        self._plant.step(drive, beam=beam, detuning=dw, half_bw=hbw)
         self._drive_total = drive
         self._step_index += 1
 
@@ -233,7 +268,10 @@ class CavityVoltageEnv(BaseLLRFEnv):
             sat_excess=sat_excess,
             slew_excess=slew_excess,
         )
-        terminated = False
+        tripped = self._check_reflect_trip(self._plant.vr)
+        terminated = bool(tripped)
+        if tripped:
+            reward += float(self.env_cfg.trip_penalty)
         truncated = self._step_index >= self.episode_len
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()
 

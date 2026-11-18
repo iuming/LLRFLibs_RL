@@ -50,6 +50,15 @@ class EnvConfig:
         microphonics_freq:       Frequency of the intra-pulse detuning
                      modulation, Hz.
         microphonics_random_phase: Randomize the microphonics phase each reset.
+        reflected_power_limit:     Optional reflected-voltage threshold, V;
+                     exceeding it for ``reflected_power_trip_steps`` consecutive
+                     samples ends the episode (quench-like protective trip).
+        reflected_power_trip_steps: Consecutive samples above the limit that
+                     trigger the trip.
+        trip_penalty:              Extra (usually negative) reward added on trip.
+        half_bw_drift_frac:        Relative linear drift of the cavity half
+                     bandwidth across the episode (robustness test); uses the
+                     time-varying plant path.
         seed:                    Base random seed (the np_random is derived from it).
     """
 
@@ -63,6 +72,10 @@ class EnvConfig:
     microphonics_amp: float = 2.0 * np.pi * 200.0
     microphonics_freq: float = 250.0
     microphonics_random_phase: bool = False
+    reflected_power_limit: Optional[float] = None
+    reflected_power_trip_steps: int = 10
+    trip_penalty: float = 0.0
+    half_bw_drift_frac: float = 0.0
     seed: int = 0
 
     def validate(self) -> None:
@@ -85,6 +98,12 @@ class EnvConfig:
             raise ValueError("microphonics_amp must be non-negative.")
         if self.microphonics_freq < 0:
             raise ValueError("microphonics_freq must be non-negative.")
+        if self.reflected_power_limit is not None and self.reflected_power_limit <= 0:
+            raise ValueError("reflected_power_limit must be positive when set.")
+        if self.reflected_power_trip_steps <= 0:
+            raise ValueError("reflected_power_trip_steps must be positive.")
+        if self.half_bw_drift_frac < 0:
+            raise ValueError("half_bw_drift_frac must be non-negative.")
 
     def __post_init__(self) -> None:
         self.validate()
@@ -202,23 +221,37 @@ class VectorSumEnvConfig(EnvConfig):
     """Configuration for the multi-cavity vector-sum environment.
 
     Attributes:
-        cavities:           One ``CavityParams`` per cavity (must share the
+        cavities:              One ``CavityParams`` per cavity (must share the
                      RF layout, see ``VectorModulePlant``).
-        reference_detuning: Detuning used to build the nominal vector-sum
+        reference_detuning:    Detuning used to build the nominal vector-sum
                      feedforward (``None`` uses ``cavities[0].detuning``).
-        drive_limit_ratio:  Max RL residual as a fraction of the drive scale.
-        obs_per_cavity:     Include every cavity voltage in the observation.
+        drive_limit_ratio:     Max RL residual as a fraction of the drive scale.
+        obs_per_cavity:        Include every cavity voltage in the observation.
+        tuner_action:          Add one slow per-cavity tuner actuator; the
+                     action becomes ``[residual_I, residual_Q, tuner_1, ...]``
+                     and the observation gains the per-cavity tuner states.
+        tuner_tau:             Tuner time constant, s.
+        tuner_detuning_limit:  Full-scale tuner detuning, rad/s.
+        tuner_effort_weight:   Penalty weight of the mean squared tuner command.
     """
 
     cavities: list[CavityParams] = field(default_factory=list)
     reference_detuning: Optional[float] = None
     drive_limit_ratio: float = 0.30
     obs_per_cavity: bool = True
+    tuner_action: bool = False
+    tuner_tau: float = 8.0e-5
+    tuner_detuning_limit: float = 2.0 * np.pi * 3.0e3
+    tuner_effort_weight: float = 0.5
 
     def validate(self) -> None:
         super().validate()
         if self.drive_limit_ratio <= 0:
             raise ValueError("drive_limit_ratio must be positive.")
+        if self.tuner_tau <= 0 or self.tuner_detuning_limit <= 0:
+            raise ValueError("tuner_tau and tuner_detuning_limit must be positive.")
+        if self.tuner_effort_weight < 0:
+            raise ValueError("tuner_effort_weight must be non-negative.")
         # Note: the cavity list itself is validated by ``VectorSumEnv`` /
         # ``VectorModulePlant`` because the default dataclass value must remain
         # constructible (defaults are evaluated at class-definition time).

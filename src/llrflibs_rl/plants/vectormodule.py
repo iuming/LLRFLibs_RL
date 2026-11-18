@@ -14,7 +14,7 @@ vector sum of the cavity voltages.
 
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -108,22 +108,32 @@ class VectorModulePlant:
         self,
         drive: complex,
         beam: complex,
+        detuning_offsets: Optional[Sequence[float]] = None,
     ) -> Tuple[complex, complex, List[complex], List[complex]]:
         """Advance every cavity with the shared drive.
 
         Args:
-            drive:  Shared forward drive, V.
-            beam:   Beam-drive voltage, V (identical for all cavities).
+            drive:            Shared forward drive, V.
+            beam:             Beam-drive voltage, V (identical for all cavities).
+            detuning_offsets: Optional per-cavity tuner offsets (rad/s) added
+                              to the base detuning; when given, each cavity is
+                              stepped with the time-varying detuning path.
 
         Returns:
             Tuple of ``(vs, vr_sum, vc_list, vr_list)``.
         """
+        if detuning_offsets is not None and len(detuning_offsets) != self.n_cavities:
+            raise ValueError("detuning_offsets length must match the number of cavities.")
         vc_list: List[complex] = []
         vr_list: List[complex] = []
         vs = 0.0 + 0.0j
         vr_sum = 0.0 + 0.0j
-        for plant in self._plants:
-            vc_next, vr_next = plant.step(drive, beam)
+        for k, plant in enumerate(self._plants):
+            if detuning_offsets is None:
+                vc_next, vr_next = plant.step(drive, beam)
+            else:
+                det = float(self.detunings[k] + detuning_offsets[k])
+                vc_next, vr_next = plant.step(drive, beam, detuning=det)
             vc_list.append(vc_next)
             vr_list.append(vr_next)
             vs += vc_next

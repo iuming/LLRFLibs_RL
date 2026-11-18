@@ -22,11 +22,15 @@ def zero_action(env):
 @pytest.mark.parametrize("env_id", rl.list_env_ids())
 def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_config):
     """Every registered env satisfies reset/step and runs an episode finite."""
+    from dataclasses import asdict
+
     from llrflibs_rl.configs.env import (
         DualLoopEnvConfig,
         FrequencyEnvConfig,
         VectorSumEnvConfig,
     )
+    from llrflibs_rl.envs.gain_scheduling import GainSchedulingConfig
+    from llrflibs_rl.envs.pulse_to_pulse import AdaptivePulseConfig, BeamLoadingConfig
 
     assert env_id in rl.list_env_ids()
     spec = rl.get_spec(env_id)
@@ -35,13 +39,25 @@ def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_confi
     if env_id in ("CavityVoltage-v0", "PIAssist-v0", "ADRCAssist-v0"):
         env = rl.make(env_id, cavity=fast_cavity, env_cfg=fast_env_config,
                       reward_cfg=RewardConfig())
-    elif env_id == "VectorSum-v0":
+    elif env_id == "GainScheduling-v0":
+        env = rl.make(env_id, cavity=fast_cavity,
+                      env_cfg=GainSchedulingConfig(**asdict(fast_env_config)),
+                      reward_cfg=RewardConfig())
+    elif env_id == "BeamLoading-v0":
+        env = rl.make(env_id, cavity=fast_cavity,
+                      env_cfg=BeamLoadingConfig(**asdict(fast_env_config)),
+                      reward_cfg=RewardConfig())
+    elif env_id == "AdaptivePulse-v0":
+        env = rl.make(env_id, config=AdaptivePulseConfig(
+            cavity=fast_cavity, pulse_len=600, n_pulses=8))
+    elif env_id in ("VectorSum-v0", "VectorSumTuner-v0"):
         small_cavities = [fast_cavity, fast_cavity, fast_cavity]
         env = rl.make(
             env_id,
             cavities=small_cavities,
             env_cfg=VectorSumEnvConfig(
                 cavities=small_cavities,
+                tuner_action=(env_id == "VectorSumTuner-v0"),
                 episode_len=fast_env_config.episode_len,
                 randomize_detuning=0.0, measurement_noise_std=0.0, loop_delay_steps=0,
                 max_drive_abs=None, max_drive_slew_per_step=None,
@@ -60,6 +76,26 @@ def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_confi
             loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,
             max_drive_abs=None, max_drive_slew_per_step=None,
         ), reward_cfg=RewardConfig())
+
+    obs, info = env.reset(seed=0)
+    assert isinstance(obs, np.ndarray)
+    assert obs.shape == env.observation_space.shape
+    assert info is not None
+
+    action_fn = zero_action(env)
+    total = 0.0
+    steps = 0
+    for _ in range(env.episode_len):
+        a = action_fn(obs)
+        obs, reward, terminated, truncated, info = env.step(a)
+        total += float(reward)
+        steps += 1
+        assert np.isfinite(total)
+        assert obs.shape == env.observation_space.shape
+        if terminated or truncated:
+            break
+    assert steps > 0
+    assert truncated  # full episode ran without early termination
 
     obs, info = env.reset(seed=0)
     assert isinstance(obs, np.ndarray)

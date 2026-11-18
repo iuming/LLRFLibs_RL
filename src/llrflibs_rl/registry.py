@@ -121,8 +121,7 @@ def make(env_id: str, **overrides: Any) -> gym.Env:
         A new environment instance.
     """
     spec = get_spec(env_id)
-    defaults = spec.default_kwargs or _DEFAULT_KWARGS_BY_ID.get(env_id, {})
-    kwargs = dict(defaults)
+    kwargs = _default_kwargs_for(env_id)
     kwargs.update(overrides)
     return spec.entry(**kwargs)
 
@@ -131,42 +130,88 @@ def make(env_id: str, **overrides: Any) -> gym.Env:
 # Default construction presets per environment id
 # ---------------------------------------------------------------------------
 
-_DEFAULT_VS_CAVITIES = [nominal_sc_cavity() for _ in range(3)]
+def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
+    """Build the default constructor arguments of an environment (lazily).
 
-_DEFAULT_KWARGS_BY_ID: Dict[str, Dict[str, Any]] = {
-    "CavityVoltage-v0": {
-        "cavity": nominal_sc_cavity(),
-        "env_cfg": ResidualEnvConfig(episode_len=1500, microphonics_random_phase=True),
-        "reward_cfg": RewardConfig(),
-    },
-    "PIAssist-v0": {
-        "cavity": nominal_sc_cavity(),
-        "env_cfg": ResidualEnvConfig(),
-        "reward_cfg": RewardConfig(),
-        "pi_cfg": PIControllerConfig(),
-    },
-    "ADRCAssist-v0": {
-        "cavity": nominal_sc_cavity(),
-        "env_cfg": ResidualEnvConfig(),
-        "reward_cfg": RewardConfig(),
-        "adrc_cfg": ADRCControllerConfig(),
-    },
-    "FrequencyControl-v0": {
-        "cavity": nominal_sc_cavity(),
-        "env_cfg": FrequencyEnvConfig(),
-        "reward_cfg": RewardConfig(),
-    },
-    "DualLoop-v0": {
-        "cavity": nominal_sc_cavity(),
-        "env_cfg": DualLoopEnvConfig(),
-        "reward_cfg": RewardConfig(),
-    },
-    "VectorSum-v0": {
-        "cavities": _DEFAULT_VS_CAVITIES,
-        "env_cfg": VectorSumEnvConfig(cavities=_DEFAULT_VS_CAVITIES),
-        "reward_cfg": RewardConfig(),
-    },
-}
+    The configuration objects of the Level-L4 environments import the env
+    classes, so they are imported here instead of at module scope to avoid a
+    circular import with ``llrflibs_rl.envs``.
+    """
+    from .configs import (
+        ADRCControllerConfig,
+        DualLoopEnvConfig,
+        FrequencyEnvConfig,
+        PIControllerConfig,
+        ResidualEnvConfig,
+        RewardConfig,
+        VectorSumEnvConfig,
+        nominal_sc_cavity,
+    )
+
+    vs_cavities = [nominal_sc_cavity() for _ in range(3)]
+    table: Dict[str, Dict[str, Any]] = {
+        "CavityVoltage-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(episode_len=1500, microphonics_random_phase=True),
+            "reward_cfg": RewardConfig(),
+        },
+        "PIAssist-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(),
+            "reward_cfg": RewardConfig(),
+            "pi_cfg": PIControllerConfig(),
+        },
+        "ADRCAssist-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(),
+            "reward_cfg": RewardConfig(),
+            "adrc_cfg": ADRCControllerConfig(),
+        },
+        "FrequencyControl-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": FrequencyEnvConfig(),
+            "reward_cfg": RewardConfig(),
+        },
+        "DualLoop-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": DualLoopEnvConfig(),
+            "reward_cfg": RewardConfig(),
+        },
+        "VectorSum-v0": {
+            "cavities": vs_cavities,
+            "env_cfg": VectorSumEnvConfig(cavities=vs_cavities),
+            "reward_cfg": RewardConfig(),
+        },
+    }
+    if env_id in table:
+        return table[env_id]
+
+    from .envs.gain_scheduling import GainSchedulingConfig
+    from .envs.pulse_to_pulse import AdaptivePulseConfig, BeamLoadingConfig
+
+    l4: Dict[str, Dict[str, Any]] = {
+        "BeamLoading-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": BeamLoadingConfig(episode_len=1500, microphonics_random_phase=True),
+            "reward_cfg": RewardConfig(),
+        },
+        "AdaptivePulse-v0": {
+            "config": AdaptivePulseConfig(cavity=nominal_sc_cavity(), n_pulses=10),
+        },
+        "VectorSumTuner-v0": {
+            "cavities": vs_cavities,
+            "env_cfg": VectorSumEnvConfig(
+                cavities=vs_cavities, tuner_action=True, episode_len=1800
+            ),
+            "reward_cfg": RewardConfig(),
+        },
+        "GainScheduling-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": GainSchedulingConfig(episode_len=1500, microphonics_random_phase=True),
+            "reward_cfg": RewardConfig(),
+        },
+    }
+    return l4.get(env_id, {})
 
 
 def recommended_timesteps(env_id: str, quick: bool = False) -> int:
@@ -188,4 +233,8 @@ def recommended_timesteps(env_id: str, quick: bool = False) -> int:
         "FrequencyControl-v0": 2000,
         "DualLoop-v0": 30000,
         "VectorSum-v0": 60000,
+        "BeamLoading-v0": 20000,
+        "AdaptivePulse-v0": 10000,
+        "VectorSumTuner-v0": 80000,
+        "GainScheduling-v0": 30000,
     }.get(env_id, 20000)

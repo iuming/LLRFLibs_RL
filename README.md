@@ -21,10 +21,17 @@ evaluation. It is designed around the natural *hierarchy of LLRF control*:
 
 | Level | Control problem | Environments |
 |---|---|---|
-| L0 | Single-cavity fast RF voltage/phase (residual & inner-loop assist) | `CavityVoltage-v0`, `PIAssist-v0`, `ADRCAssist-v0` |
+| L0 | Single-cavity fast RF voltage/phase (residual & inner-loop assist) | `CavityVoltage-v0`, `PIAssist-v0`, `ADRCAssist-v0`, `GainScheduling-v0`* |
 | L1 | Resonance / slow tuner-piezo compensation | `FrequencyControl-v0` |
 | L2 | Hierarchical fast RF + slow tuner cooperation | `DualLoop-v0` |
-| L3 | Multi-cavity vector-sum module control | `VectorSum-v0` |
+| L3 | Multi-cavity vector-sum module control | `VectorSum-v0`, `VectorSumTuner-v0`* |
+| L4 | Beam loading & pulse-to-pulse adaptation | `BeamLoading-v0`*, `AdaptivePulse-v0`* |
+
+\* `GainScheduling-v0`: RL schedules the inner-loop PI gains instead of adding
+a residual. `VectorSumTuner-v0`: a shared RF source plus one slow tuner per
+cavity. `BeamLoading-v0`: the beam steps on during the flattop while the
+feedforward is built beam-free. `AdaptivePulse-v0`: each step is one full
+pulse; RL tunes per-segment feedforward corrections while the detuning drifts.
 
 ## Installation
 

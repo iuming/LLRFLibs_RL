@@ -12,6 +12,8 @@ once the package is imported (the top-level ``llrflibs_rl`` import does that).
 """
 
 from .core import BaseLLRFEnv
+from .gain_scheduling import GainSchedulingEnv
+from .pulse_to_pulse import AdaptivePulseEnv, BeamLoadingEnv
 from .resonance import DualLoopEnv, FrequencyEnv
 from .vectormodule import VectorSumEnv
 from .voltage import ADRCAssistEnv, CavityVoltageEnv, PIAssistEnv
@@ -56,14 +58,41 @@ _registry.register(
     entry=VectorSumEnv,
     kind="vectormodule",
 )
+_registry.register(
+    "BeamLoading-v0",
+    description="Beam-loading transient: the beam steps on during the flattop while the feedforward is beam-free.",
+    entry=BeamLoadingEnv,
+    kind="voltage",
+)
+_registry.register(
+    "AdaptivePulse-v0",
+    description="Pulse-to-pulse adaptive feedforward under a drifting cavity detuning.",
+    entry=AdaptivePulseEnv,
+    kind="pulse",
+)
+_registry.register(
+    "VectorSumTuner-v0",
+    description="Vector-sum module with a shared RF source and per-cavity slow tuner actuation.",
+    entry=VectorSumEnv,
+    kind="vectormodule",
+)
+_registry.register(
+    "GainScheduling-v0",
+    description="Single-cavity tracking where RL schedules the inner-loop PI gains.",
+    entry=GainSchedulingEnv,
+    kind="voltage",
+)
 
 __all__ = [
     "ADRCAssistEnv",
+    "AdaptivePulseEnv",
     "BaseLLRFEnv",
+    "BeamLoadingEnv",
     "CavityVoltageEnv",
     "DualLoopEnv",
     "EpisodicMonitor",
     "FrequencyEnv",
+    "GainSchedulingEnv",
     "PIAssistEnv",
     "VectorSumEnv",
 ]

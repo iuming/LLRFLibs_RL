@@ -23,7 +23,7 @@ from llrflibs.rf_control import ADRC_control_step, ADRC_controller, basic_rf_con
 
 from ..configs.controller import ADRCControllerConfig, PIControllerConfig
 
-__all__ = ["ComplexPIController", "ADRCController"]
+__all__ = ["ADRCController", "ComplexPIController", "ScheduledPIController"]
 
 
 def _state_matrix(size: int) -> np.matrix:
@@ -85,6 +85,59 @@ class ComplexPIController:
             raise RuntimeError("PI controller step failed.")
         self._state_k = state_k
         return _as_complex(drive_pi), _as_complex(drive_fb)
+
+
+class ScheduledPIController:
+    """Direct-form complex PI whose gains can change sample by sample.
+
+    This is the implementation behind the gain-scheduling environment: the RL
+    policy selects ``kp`` and ``ki`` at runtime and the controller applies
+    ``drive = -(kp*error + ki*integral) + feedforward`` with a fixed
+    integrator recurrence ``integral += Ts*error``.  It mirrors the classical
+    complex PI at moderate gains while staying trivially differentiable-free
+    and sample-wise.
+
+    Args:
+        kp:     Nominal proportional gain.
+        ki:     Nominal integral gain.
+        Ts:     Sampling time, s.
+    """
+
+    def __init__(self, kp: float, ki: float, Ts: float) -> None:
+        self.Ts = float(Ts)
+        self.kp = float(kp)
+        self.ki = float(ki)
+        self.reset()
+
+    def reset(self) -> None:
+        """Reset the integrator state."""
+        self.integral = 0.0 + 0.0j
+        self.drive_fb = 0.0 + 0.0j
+
+    def step(
+        self,
+        error: complex,
+        feedforward: complex,
+        kp: Optional[float] = None,
+        ki: Optional[float] = None,
+    ) -> Tuple[complex, complex]:
+        """Execute one controller step with (optionally scheduled) gains.
+
+        Args:
+            error:       Complex voltage error ``sp - vc``.
+            feedforward: Nominal feedforward drive.
+            kp:          Proportional gain override (defaults to ``self.kp``).
+            ki:          Integral gain override (defaults to ``self.ki``).
+
+        Returns:
+            Tuple of ``(drive_total, drive_feedback)``.
+        """
+        kp_use = float(kp) if kp is not None else self.kp
+        ki_use = float(ki) if ki is not None else self.ki
+        self.integral = self.integral + error * self.Ts
+        drive_fb = -(kp_use * error + ki_use * self.integral)
+        self.drive_fb = drive_fb
+        return drive_fb + complex(feedforward), drive_fb
 
 
 class ADRCController:

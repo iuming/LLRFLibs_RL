@@ -1,0 +1,14 @@
+# RL gain scheduling of a classical PI inner loop — experiment spec.
+experiment:
+  env: GainScheduling-v0
+  algorithm: ppo
+  timesteps: 30000
+  seed: 0
+  baseline: pi
+  runs_dir: runs
+
+notes: >
+  RL chooses kp/ki sample by sample instead of adding a residual.  The "pi"
+  baseline evaluates the fixed nominal gains, so "RL vs pi" is exactly the
+  adaptive-versus-fixed gain comparison.  High gains everywhere destabilize
+  the transient; the policy must raise the gain only during flattop.

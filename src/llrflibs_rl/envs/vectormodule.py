@@ -21,8 +21,10 @@ import numpy as np
 from gymnasium import spaces
 
 from ..configs.cavity import CavityParams
+from ..configs.controller import TunerActuatorConfig
 from ..configs.env import VectorSumEnvConfig
 from ..configs.task import RewardConfig
+from ..controllers.resonance import FirstOrderActuator
 from ..plants.vectormodule import VectorModulePlant
 from ..tasks.events import apply_drive_limits
 from ..tasks.observations import build_vector_sum_obs
@@ -36,9 +38,13 @@ __all__ = ["VectorSumEnv"]
 class VectorSumEnv(BaseLLRFEnv):
     """Track the vector sum of several cavities with a shared RF drive.
 
-    Observation (13 + 2*n if ``obs_per_cavity``):
-        ``[vs(2), sp(2), err(2), vr(2), vf_ff(2), vb(2), t, (vc_i(2), ...)]``.
-    Action (2,):                 normalized I/Q residual in ``[-1, 1]``.
+    Observation (13 + 2*n if ``obs_per_cavity``, plus n tuner states with
+    ``tuner_action``):
+        ``[vs(2), sp(2), err(2), vr(2), vf_ff(2), vb(2), t, (vc_i(2), ...),
+        (tuner_state_i, ...)]``.
+    Action (2, or 2 + n with ``tuner_action``):
+        normalized I/Q residual in ``[-1, 1]`` plus one normalized tuner
+        command per cavity.
 
     Args:
         cavities:   One ``CavityParams`` per cavity.
@@ -83,8 +89,26 @@ class VectorSumEnv(BaseLLRFEnv):
             drive_effort_scale=self.drive_effort_scale,
         )
 
-        n_obs = 13 + 2 * self.n_cavities if env_cfg.obs_per_cavity else 13
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.tuner_action = bool(env_cfg.tuner_action)
+        if self.tuner_action:
+            self._tuners = [
+                FirstOrderActuator(
+                    TunerActuatorConfig(
+                        tau=env_cfg.tuner_tau, detuning_limit=env_cfg.tuner_detuning_limit
+                    ),
+                    env_cfg.Ts,
+                )
+                for _ in range(self.n_cavities)
+            ]
+            self.tuner_detuning_limit = float(env_cfg.tuner_detuning_limit)
+            n_action = 2 + self.n_cavities
+            n_obs = (13 + 2 * self.n_cavities if env_cfg.obs_per_cavity else 13) + self.n_cavities
+        else:
+            self._tuners = []
+            n_action = 2
+            n_obs = 13 + 2 * self.n_cavities if env_cfg.obs_per_cavity else 13
+
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(n_action,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(n_obs,), dtype=np.float32)
 
         self._detunings: list[float] = []
@@ -139,7 +163,7 @@ class VectorSumEnv(BaseLLRFEnv):
         vf_ff = self._reference.vf_ff_at(idx)
         vb = self._reference.vb_at(idx)
         err = sp - self._meas_vs
-        return build_vector_sum_obs(
+        obs = build_vector_sum_obs(
             vs=self._plant.vector_sum,
             sp=sp,
             err=err,
@@ -152,6 +176,10 @@ class VectorSumEnv(BaseLLRFEnv):
             episode_len=self.episode_len,
             obs_per_cavity=self.env_cfg.obs_per_cavity,
         )
+        if self.tuner_action:
+            tuner_states = np.asarray([t.state / self.tuner_detuning_limit for t in self._tuners])
+            obs = np.concatenate([obs, tuner_states.astype(np.float32)])
+        return obs
 
     def _make_info(self) -> Dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
@@ -186,6 +214,8 @@ class VectorSumEnv(BaseLLRFEnv):
         self._drive_total = self._reference.vf_ff_at(0)
         self._last_action = 0.0 + 0.0j
         self._step_index = 0
+        for tuner in self._tuners:
+            tuner.reset()
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
@@ -193,6 +223,14 @@ class VectorSumEnv(BaseLLRFEnv):
         action = self._clamp_action(action)
         residual = complex(float(action[0]), float(action[1])) * self.drive_limit
         self._last_action = residual
+
+        tuner_cmd = np.zeros(self.n_cavities, dtype=np.float32)
+        detuning_offsets: Optional[list[float]] = None
+        if self.tuner_action:
+            tuner_cmd = np.clip(action[2: 2 + self.n_cavities], -1.0, 1.0)
+            detuning_offsets = []
+            for tuner, cmd in zip(self._tuners, tuner_cmd):
+                detuning_offsets.append(float(tuner.step(cmd)))
 
         idx = min(self._step_index, self.episode_len - 1)
         vf_ff = self._reference.vf_ff_at(idx)
@@ -203,7 +241,7 @@ class VectorSumEnv(BaseLLRFEnv):
         drive = self._delay_drive(drive)
 
         beam = self._reference.vb_at(idx)
-        self._plant.step(drive, beam)
+        self._plant.step(drive, beam, detuning_offsets=detuning_offsets)
         self._meas_vs = self._measure(self._plant.vector_sum, self.obs_scale)
         self._drive_total = drive
         self._step_index += 1
@@ -220,6 +258,8 @@ class VectorSumEnv(BaseLLRFEnv):
             sat_excess=sat_excess,
             slew_excess=slew_excess,
         )
+        if self.tuner_action:
+            reward -= self.env_cfg.tuner_effort_weight * float(np.mean(tuner_cmd**2))
         terminated = False
         truncated = self._step_index >= self.episode_len
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()
