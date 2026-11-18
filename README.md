@@ -70,6 +70,8 @@ python -m llrflibs_rl.scripts.run benchmark --quick
 
 See `examples/` for scenario scripts, `experiments/` for reproducible
 experiment configurations, and `docs/ARCHITECTURE.md` for the package design.
+The consolidated benchmark results (final numbers, the PPO/SAC/TD3 study and
+the level-by-level reading) live in **`docs/BENCHMARKS.md`**.
 
 ## Package layout
 
