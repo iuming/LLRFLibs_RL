@@ -1,5 +1,0 @@
-numpy
-scipy
-gymnasium
-stable-baselines3
-llrflibs>=1.0.2

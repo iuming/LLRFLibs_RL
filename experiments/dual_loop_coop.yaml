@@ -1,0 +1,12 @@
+# Dual-loop cooperation — fast RF PI + RL slow tuner (Level L2).
+experiment:
+  env: DualLoop-v0
+  algorithm: ppo
+  timesteps: 30000
+  seed: 0
+  runs_dir: runs
+
+notes: >
+  The fast complex-PI loop keeps the cavity voltage; RL learns the slow tuner
+  to reject the mechanical/microphonics detuning.  This mirrors the classical
+  LLRF division of labour.  Reference run: baseline reward ~ -173, RL ~ -23.

@@ -1,0 +1,14 @@
+# Pulse tracking — single-cavity fast RF voltage residual control (Level L0).
+# Reproducible experiment specification consumed by:
+#   python -m llrflibs_rl.scripts.run train --config experiments/pulse_tracking.yaml
+experiment:
+  env: CavityVoltage-v0
+  algorithm: ppo
+  timesteps: 15000
+  seed: 0
+  runs_dir: runs
+
+notes: >
+  RL residual on top of the analytic feedforward for a nominal SC cavity with
+  microphonics-type intra-pulse detuning.  The baseline is the analytic
+  feedforward alone (zero residual).

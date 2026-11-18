@@ -1,0 +1,18 @@
+{
+  "primary_examples": [
+    "example_rl_sp_ff.py",
+    "example_rl_ilc_compare.py",
+    "example_rl_frequency.py",
+    "example_rl_sim_cavity_mech2.py",
+    "example_rl_pi_assist.py",
+    "example_rl_adrc_assist.py",
+    "example_rl_vector_sum.py",
+    "example_rl_dual_loop.py"
+  ],
+  "exploratory_examples": [
+    "exploratory/example_rl_cavity.py",
+    "exploratory/example_rl_feedback.py",
+    "exploratory/example_rl_feedback_adrc.py",
+    "exploratory/example_rl_sim_cavity_basic.py"
+  ]
+}

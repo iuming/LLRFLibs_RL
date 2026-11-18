@@ -1,0 +1,13 @@
+# Vector-sum control — multi-cavity module with a shared RF source (Level L3).
+experiment:
+  env: VectorSum-v0
+  algorithm: ppo
+  timesteps: 60000
+  seed: 0
+  runs_dir: runs
+
+notes: >
+  Three cavities share one forward drive; the agent regulates the complex
+  vector sum while each cavity draws an independent random detuning at reset.
+  Recommended budget is large (60k) because of the long episode and the
+  per-cavity domain randomization.

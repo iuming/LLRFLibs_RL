@@ -1,0 +1,12 @@
+# Resonance control — slow tuner/piezo compensation of cavity detuning (Level L1).
+experiment:
+  env: FrequencyControl-v0
+  algorithm: sac
+  timesteps: 4000
+  seed: 0
+  runs_dir: runs
+
+notes: >
+  The RF drive is constant; the RL policy commands a first-order tuner
+  actuator against sinusoidal microphonics plus Lorentz-force mechanical
+  modes.  SAC is recommended for this continuous scalar actuation task.

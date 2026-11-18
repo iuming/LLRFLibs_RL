@@ -1,15 +1,20 @@
 __pycache__/
-.pytest_cache/
-.venv/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 *.egg-info/
 build/
 dist/
-checkpoints/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# training artifacts
 runs/
-_tmp*.zip
-*.png
-ppo_*.zip
-sac_*.zip
+models/
+*.zip
+
+# notebooks / OS
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db

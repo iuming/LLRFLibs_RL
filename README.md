@@ -1,48 +1,105 @@
 # LLRFLibs_RL
 
-Reinforcement-learning environments and examples for LLRF cavity control.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](#)
+[![BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](#)
 
-**Author:** Ming Liu (mliu1018@ustc.edu.cn), National Synchrotron Radiation Laboratory, University of Science and Technology of China
+**Reinforcement-learning toolkit for LLRF (low-level radio-frequency) control of
+particle-accelerator RF cavities.**
 
-This subrepository is meant to sit next to the main `LLRFLibsPy` repository and reuse its physics and RF helpers.
+`LLRFLibs_RL` is the RL sub-library of **LLRFLibsPy** (National Synchrotron
+Radiation Laboratory, USTC). It builds a modular research stack on top of the
+physics and classical-control primitives provided by
+[`llrflibs`](https://github.com/iuming/LLRFLibsPy):
 
-## Contents
+- `llrflibs.rf_sim`  — cavity / beam / mechanical-mode numerical models
+- `llrflibs.rf_control` — analytical feedforward, PI/notch, ADRC, ILC
+- `llrflibs.rf_sysid`  — system identification and disturbance estimation
 
-- Gymnasium environments for cavity-voltage tracking and frequency-control compensation.
-- Stable-Baselines3 training examples.
-- A small PID-style baseline comparison in the cavity example.
-- RL counterparts for feedback, ADRC-style feedback, cavity simulation, and mechanical detuning control.
+This package adds the **RL layer**: physical plants, MDP tasks, baseline
+controllers, Gymnasium environments, agent training and physics-aware
+evaluation. It is designed around the natural *hierarchy of LLRF control*:
 
-## Install
+| Level | Control problem | Environments |
+|---|---|---|
+| L0 | Single-cavity fast RF voltage/phase (residual & inner-loop assist) | `CavityVoltage-v0`, `PIAssist-v0`, `ADRCAssist-v0` |
+| L1 | Resonance / slow tuner-piezo compensation | `FrequencyControl-v0` |
+| L2 | Hierarchical fast RF + slow tuner cooperation | `DualLoop-v0` |
+| L3 | Multi-cavity vector-sum module control | `VectorSum-v0` |
 
-Install the main library first, then install this subrepository in editable mode from this folder:
+## Installation
 
 ```bash
-pip install -e ..
+# from the repository root
 pip install -e .
 ```
 
-If you already have `llrflibs`, `gymnasium`, and `stable-baselines3` in your RL conda environment, only the editable install is needed.
-
-## Run examples
+The parent library must be installed first:
 
 ```bash
-python -m example.example_rl_cavity
-python -m example.example_rl_feedback
-python -m example.example_rl_feedback_adrc
-python -m example.example_rl_sim_cavity_basic
-python -m example.example_rl_sim_cavity_mech2
-python -m example.example_rl_frequency
-python -m example.example_rl_sp_ff
+pip install -e ../LLRFLibsPy        # or pip install llrflibs>=1.0.2
 ```
 
-## Example mapping
+## Quick start
 
-- `example_rl_cavity.py` maps to pulsed cavity-voltage tracking and feedforward correction.
-- `example_rl_feedback.py` maps to the basic RF feedback control example.
-- `example_rl_feedback_adrc.py` maps to the ADRC feedback control example.
-- `example_rl_sim_cavity_basic.py` maps to the basic cavity-response simulation example.
-- `example_rl_sim_cavity_mech2.py` maps to the cavity-with-mechanical-modes example.
-- `example_rl_frequency.py` maps to the detuning and frequency-control example.
-- `example_rl_ilc_compare.py` compares RL against the ILC-style adaptive feedforward example.
-- `example_rl_sp_ff.py` compares RL residual control against the analytical feedforward example.
+```python
+import llrflibs_rl as rl
+
+# Create an environment from the registry with its recommended preset config.
+env = rl.make("DualLoop-v0")
+obs, info = env.reset(seed=0)
+print(env.observation_space, env.action_space)
+
+# Train a baseline-free PPO controller in one call.
+from llrflibs_rl.agents import AgentConfig, train
+model = train(env, AgentConfig(timesteps=30_000))
+```
+
+Or from the command line:
+
+```bash
+python -m llrflibs_rl.scripts.run train --env DualLoop-v0 --timesteps 30000
+python -m llrflibs_rl.scripts.run benchmark --quick
+```
+
+See `examples/` for scenario scripts, `experiments/` for reproducible
+experiment configurations, and `docs/ARCHITECTURE.md` for the package design.
+
+## Package layout
+
+```
+src/llrflibs_rl/
+├── configs/       strongly-typed configuration (cavity / env / task / controller / agent)
+├── plants/        physical MDP "world": cavity voltage, resonance, vector module
+├── tasks/         reference waveforms, observations, rewards, event handling
+├── controllers/   classical baseline controllers (FF, PI, ADRC, tuner, ILC)
+├── envs/          Gymnasium environments + wrappers
+├── agents/        training / evaluation loops and per-task presets
+├── evaluation/    physics-aware metrics, robustness sweeps, report generation
+├── registry.py    environment registry (gym-style register / make)
+└── utils/         seeding, run artifacts, logging
+```
+
+## Examples
+
+After installing, run any scenario:
+
+```bash
+python examples/train_and_eval.py --env PIAssist-v0 --timesteps 40000
+python examples/train_and_eval.py --env DualLoop-v0   --timesteps 30000
+python examples/train_and_eval.py --env VectorSum-v0  --timesteps 60000
+python examples/train_and_eval.py --env CavityVoltage-v0
+```
+
+Each run writes a self-contained artifact directory under `runs/`
+(`config.json`, trained model, evaluation metrics and figures).
+
+## Testing
+
+```bash
+pytest
+```
+
+## License
+
+BSD-3-Clause. Copyright (c) 2026, National Synchrotron Radiation Laboratory,
+University of Science and Technology of China. Author: Ming Liu.

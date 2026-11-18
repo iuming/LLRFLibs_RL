@@ -1,0 +1,32 @@
+[
+  {
+    "env": "ADRCAssist-v0",
+    "baseline_reward": -65.18904331136764,
+    "rl_reward": -65.63253125666186
+  },
+  {
+    "env": "CavityVoltage-v0",
+    "baseline_reward": -1974.1180577582604,
+    "rl_reward": -2022.3377745265411
+  },
+  {
+    "env": "DualLoop-v0",
+    "baseline_reward": -335.94208620364924,
+    "rl_reward": -392.47846021362477
+  },
+  {
+    "env": "FrequencyControl-v0",
+    "baseline_reward": -9541.213916228835,
+    "rl_reward": -8021.080513832074
+  },
+  {
+    "env": "PIAssist-v0",
+    "baseline_reward": -150.1118436343907,
+    "rl_reward": -151.44827664119765
+  },
+  {
+    "env": "VectorSum-v0",
+    "baseline_reward": -1104.0769419859148,
+    "rl_reward": -520.7395202499357
+  }
+]

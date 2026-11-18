@@ -1,0 +1,191 @@
+###################################################################################
+#  Copyright (c) 2026 by National Synchrotron Radiation Laboratory, University of Science and Technology of China
+#  All rights reserved.
+#  Authors: Ming Liu, mliu1018@ustc.edu.cn
+###################################################################################
+"""
+Environment registry (gymnasium-style).
+
+Built-in environments are registered by id and can be instantiated with
+:func:`make`.  Default constructor arguments (a nominal cavity plus the
+recommended configuration presets) are provided per environment so that a
+single ``make("DualLoop-v0")`` returns a runnable environment.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
+
+import gymnasium as gym
+
+from .configs import (
+    ADRCControllerConfig,
+    DualLoopEnvConfig,
+    FrequencyEnvConfig,
+    PIControllerConfig,
+    ResidualEnvConfig,
+    RewardConfig,
+    VectorSumEnvConfig,
+    nominal_sc_cavity,
+)
+
+__all__ = ["EnvSpec", "get_spec", "list_env_ids", "make", "recommended_timesteps", "register"]
+
+
+@dataclass
+class EnvSpec:
+    """Description of a registered environment.
+
+    Attributes:
+        env_id:      Unique environment id (e.g. ``"DualLoop-v0"``).
+        description: Human-readable summary.
+        entry:       Environment class (or factory) to instantiate.
+        kind:        Control level: ``"voltage"`` / ``"resonance"`` / ``"vectormodule"``.
+        default_kwargs: Default constructor keyword arguments.
+    """
+
+    env_id: str
+    description: str
+    entry: Callable[..., gym.Env]
+    kind: str
+    default_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+
+_REGISTRY: Dict[str, EnvSpec] = {}
+
+
+# ---------------------------------------------------------------------------
+# Registration / lookup
+# ---------------------------------------------------------------------------
+
+def register(
+    env_id: str,
+    entry: Callable[..., gym.Env],
+    description: str = "",
+    kind: str = "",
+    **default_kwargs: Any,
+) -> None:
+    """Register an environment by id.
+
+    Args:
+        env_id:          Unique id.
+        entry:           Environment class (or factory).
+        description:     Human-readable summary.
+        kind:            Control level.
+        default_kwargs:  Default constructor arguments.
+    """
+    if env_id in _REGISTRY:
+        raise ValueError(f"environment id already registered: {env_id}")
+    _REGISTRY[env_id] = EnvSpec(
+        env_id=env_id,
+        description=description,
+        entry=entry,
+        kind=kind,
+        default_kwargs=dict(default_kwargs),
+    )
+
+
+def get_spec(env_id: str) -> EnvSpec:
+    """Return the spec of a registered environment.
+
+    Args:
+        env_id: Environment id.
+
+    Returns:
+        The corresponding :class:`EnvSpec`.
+
+    Raises:
+        KeyError: If the id is unknown.
+    """
+    try:
+        return _REGISTRY[env_id]
+    except KeyError:
+        valid = ", ".join(sorted(_REGISTRY))
+        raise KeyError(f"unknown environment id {env_id!r}; registered ids: {valid}") from None
+
+
+def list_env_ids() -> List[str]:
+    """Return the sorted ids of all registered environments."""
+    return sorted(_REGISTRY)
+
+
+def make(env_id: str, **overrides: Any) -> gym.Env:
+    """Instantiate a registered environment.
+
+    Args:
+        env_id:    Environment id.
+        overrides: Constructor arguments that replace the defaults.
+
+    Returns:
+        A new environment instance.
+    """
+    spec = get_spec(env_id)
+    defaults = spec.default_kwargs or _DEFAULT_KWARGS_BY_ID.get(env_id, {})
+    kwargs = dict(defaults)
+    kwargs.update(overrides)
+    return spec.entry(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Default construction presets per environment id
+# ---------------------------------------------------------------------------
+
+_DEFAULT_VS_CAVITIES = [nominal_sc_cavity() for _ in range(3)]
+
+_DEFAULT_KWARGS_BY_ID: Dict[str, Dict[str, Any]] = {
+    "CavityVoltage-v0": {
+        "cavity": nominal_sc_cavity(),
+        "env_cfg": ResidualEnvConfig(episode_len=1500, microphonics_random_phase=True),
+        "reward_cfg": RewardConfig(),
+    },
+    "PIAssist-v0": {
+        "cavity": nominal_sc_cavity(),
+        "env_cfg": ResidualEnvConfig(),
+        "reward_cfg": RewardConfig(),
+        "pi_cfg": PIControllerConfig(),
+    },
+    "ADRCAssist-v0": {
+        "cavity": nominal_sc_cavity(),
+        "env_cfg": ResidualEnvConfig(),
+        "reward_cfg": RewardConfig(),
+        "adrc_cfg": ADRCControllerConfig(),
+    },
+    "FrequencyControl-v0": {
+        "cavity": nominal_sc_cavity(),
+        "env_cfg": FrequencyEnvConfig(),
+        "reward_cfg": RewardConfig(),
+    },
+    "DualLoop-v0": {
+        "cavity": nominal_sc_cavity(),
+        "env_cfg": DualLoopEnvConfig(),
+        "reward_cfg": RewardConfig(),
+    },
+    "VectorSum-v0": {
+        "cavities": _DEFAULT_VS_CAVITIES,
+        "env_cfg": VectorSumEnvConfig(cavities=_DEFAULT_VS_CAVITIES),
+        "reward_cfg": RewardConfig(),
+    },
+}
+
+
+def recommended_timesteps(env_id: str, quick: bool = False) -> int:
+    """Return the recommended training budget of an environment.
+
+    Args:
+        env_id: Environment id.
+        quick:  Return a small sanity-check budget instead.
+
+    Returns:
+        Number of training timesteps.
+    """
+    if quick:
+        return 2000
+    return {
+        "CavityVoltage-v0": 10000,
+        "PIAssist-v0": 40000,
+        "ADRCAssist-v0": 40000,
+        "FrequencyControl-v0": 2000,
+        "DualLoop-v0": 30000,
+        "VectorSum-v0": 60000,
+    }.get(env_id, 20000)
