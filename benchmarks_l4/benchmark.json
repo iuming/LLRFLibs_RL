@@ -1,0 +1,40 @@
+[
+  {
+    "env": "BeamLoading-v0",
+    "baseline_reward": -1632.344810267823,
+    "rl_reward": -1698.3746525162144,
+    "rl_reward_std": 1291.7906650226473,
+    "n_seeds": 4,
+    "baseline_error_rms": 12820223.211126259,
+    "rl_error_rms": 12682152.349199384,
+    "baseline_flattop_error_rms": 11895070.779413644,
+    "rl_flattop_error_rms": 11937289.688505745
+  },
+  {
+    "env": "AdaptivePulse-v0",
+    "baseline_reward": -9.28392118862088,
+    "rl_reward": -6.075863210929002,
+    "rl_reward_std": 0.0,
+    "n_seeds": 4
+  },
+  {
+    "env": "VectorSumTuner-v0",
+    "baseline_reward": -268.3060470169175,
+    "rl_reward": -478.3779586207684,
+    "rl_reward_std": 81.1811266551696,
+    "n_seeds": 4,
+    "baseline_error_rms": 38131019.46122979,
+    "rl_error_rms": 40971750.62375547
+  },
+  {
+    "env": "GainScheduling-v0",
+    "baseline_reward": -353650.3942026065,
+    "rl_reward": -345494.8820463311,
+    "rl_reward_std": 64148.95474317924,
+    "n_seeds": 4,
+    "baseline_error_rms": 108215884.3582564,
+    "rl_error_rms": 107199794.80759747,
+    "baseline_flattop_error_rms": 116843977.0695009,
+    "rl_flattop_error_rms": 115641149.36627802
+  }
+]

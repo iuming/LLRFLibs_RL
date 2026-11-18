@@ -102,7 +102,8 @@ class VectorSumEnv(BaseLLRFEnv):
             ]
             self.tuner_detuning_limit = float(env_cfg.tuner_detuning_limit)
             n_action = 2 + self.n_cavities
-            n_obs = (13 + 2 * self.n_cavities if env_cfg.obs_per_cavity else 13) + self.n_cavities
+            # voltage-ish layout (+ per-cavity voltages) + tuner states + detunings.
+            n_obs = (13 + 2 * self.n_cavities if env_cfg.obs_per_cavity else 13) + 2 * self.n_cavities
         else:
             self._tuners = []
             n_action = 2
@@ -178,7 +179,11 @@ class VectorSumEnv(BaseLLRFEnv):
         )
         if self.tuner_action:
             tuner_states = np.asarray([t.state / self.tuner_detuning_limit for t in self._tuners])
-            obs = np.concatenate([obs, tuner_states.astype(np.float32)])
+            detuning_norm = np.asarray(
+                [float(np.clip(d / self.tuner_detuning_limit, -1.0, 1.0)) for d in self._detunings]
+            )
+            obs = np.concatenate([obs, tuner_states.astype(np.float32),
+                                  detuning_norm.astype(np.float32)])
         return obs
 
     def _make_info(self) -> Dict[str, float]:

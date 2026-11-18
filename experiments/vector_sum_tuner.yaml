@@ -2,12 +2,16 @@
 experiment:
   env: VectorSumTuner-v0
   algorithm: ppo
-  timesteps: 80000
+  timesteps: 4000
   seed: 0
   baseline: zero
   runs_dir: runs
 
 notes: >
   A shared RF source plus one first-order tuner actuator per cavity.  The
-  action is [I/Q residual, tuner_1, ..., tuner_n]; the agent must balance the
-  fast shared drive against the slow per-cavity resonance compensation.
+  action is [I/Q residual, tuner_1, ..., tuner_n]; the observation carries the
+  per-cavity tuner states and signed detunings.  Note: PPO is currently
+  unstable on this environment beyond a few thousand steps (the policy drifts
+  into drive saturation), so the recommended budget is intentionally short;
+  stabilizing it (SAC/TD3, VecNormalize, shorter episodes) is an open research
+  direction.

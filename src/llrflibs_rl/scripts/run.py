@@ -71,6 +71,8 @@ def _parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--quick", action="store_true",
                          help="use the small sanity budget for every environment")
     p_bench.add_argument("--baseline", type=str, default="zero", choices=list_baselines())
+    p_bench.add_argument("--envs", type=str, default=None,
+                         help="comma-separated environment ids (default: all registered)")
     p_bench.add_argument("--seed", type=int, default=0)
     p_bench.add_argument("--seeds", type=int, default=3,
                          help="number of evaluation seeds averaged per environment")
@@ -148,11 +150,16 @@ def _cmd_eval(args: argparse.Namespace) -> None:
 
 
 def _cmd_benchmark(args: argparse.Namespace) -> None:
+    from ..registry import get_spec
+
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     evaluate_seeds = list(range(args.seed, args.seed + args.seeds))
+    env_ids = [e.strip() for e in args.envs.split(",") if e.strip()] if args.envs else list_env_ids()
+    for env_id in env_ids:
+        get_spec(env_id)  # validate id early
     rows: List[Dict[str, object]] = []
-    for env_id in list_env_ids():
+    for env_id in env_ids:
         print_header(f"Benchmarking {env_id}  (baseline={args.baseline}, seeds={evaluate_seeds})")
         summary = run_experiment(
             env_id=env_id,

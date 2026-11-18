@@ -152,9 +152,9 @@ def test_vector_sum_tuner_env_shapes_and_step():
     )
     obs, _ = env.reset(seed=0)
     assert env.action_space.shape == (5,)
-    assert obs.shape == (19 + 3,)
+    assert obs.shape == (13 + 6 + 6,)
     obs, rw, term, trunc, info = env.step(np.zeros(5, dtype=np.float32))
-    assert obs.shape == (22,)
+    assert obs.shape == (25,)
     assert np.isfinite(rw)
 
 

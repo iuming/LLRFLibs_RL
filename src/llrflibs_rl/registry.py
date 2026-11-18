@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
+import numpy as np
+
 import gymnasium as gym
 
 from .configs import (
@@ -201,7 +203,9 @@ def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
         "VectorSumTuner-v0": {
             "cavities": vs_cavities,
             "env_cfg": VectorSumEnvConfig(
-                cavities=vs_cavities, tuner_action=True, episode_len=1800
+                cavities=vs_cavities, tuner_action=True, episode_len=1800,
+                randomize_detuning=2.0 * np.pi * 150.0,
+                tuner_detuning_limit=2.0 * np.pi * 1500.0,
             ),
             "reward_cfg": RewardConfig(),
         },
@@ -235,6 +239,6 @@ def recommended_timesteps(env_id: str, quick: bool = False) -> int:
         "VectorSum-v0": 60000,
         "BeamLoading-v0": 20000,
         "AdaptivePulse-v0": 10000,
-        "VectorSumTuner-v0": 80000,
+        "VectorSumTuner-v0": 4000,
         "GainScheduling-v0": 30000,
     }.get(env_id, 20000)

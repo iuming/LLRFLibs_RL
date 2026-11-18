@@ -133,6 +133,14 @@ python -m llrflibs_rl.scripts.run benchmark --quick  # CI-style sanity check
 Writes `benchmarks/benchmark.md` / `benchmark.json` with reward and error
 metrics per environment.
 
+### Known limitations
+
+`VectorSumTuner-v0` combines a saturated shared-drive residual with three slow
+tuners; the default PPO setup is unstable beyond a few thousand training steps
+(the policy drifts into drive saturation). Its recommended budget is therefore
+deliberately short, and stabilizing it (SAC/TD3, observation normalization,
+shorter episodes) is an open research direction.
+
 ## Testing
 
 ```bash
