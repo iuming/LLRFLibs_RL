@@ -1,8 +1,8 @@
 # Vector-sum with per-cavity slow tuners (Level L3+) — experiment spec.
 experiment:
   env: VectorSumTuner-v0
-  algorithm: ppo
-  timesteps: 4000
+  algorithm: sac
+  timesteps: 20000
   seed: 0
   baseline: zero
   runs_dir: runs
@@ -10,8 +10,7 @@ experiment:
 notes: >
   A shared RF source plus one first-order tuner actuator per cavity.  The
   action is [I/Q residual, tuner_1, ..., tuner_n]; the observation carries the
-  per-cavity tuner states and signed detunings.  Note: PPO is currently
-  unstable on this environment beyond a few thousand steps (the policy drifts
-  into drive saturation), so the recommended budget is intentionally short;
-  stabilizing it (SAC/TD3, VecNormalize, shorter episodes) is an open research
-  direction.
+  per-cavity tuner states and signed detunings.  The default on-policy PPO
+  collapses into drive saturation on long budgets, so the preset uses a
+  stable off-policy SAC (train_freq=gradient_steps=64, batch 256) verified by
+  experiments/vector_sum_tuner_study.py.

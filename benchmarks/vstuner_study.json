@@ -1,0 +1,58 @@
+[
+  {
+    "conf": "baseline (zero)",
+    "reward_mean": -268.3060470169175,
+    "reward_std": 114.12092809848967,
+    "error_rms_mean": 38131019.46122979,
+    "note": "nominal feedforward only"
+  },
+  {
+    "conf": "ppo-4k (current)",
+    "reward_mean": -478.3779586207684,
+    "reward_std": 81.1811266551696,
+    "error_rms_mean": 40971750.62375547,
+    "note": "current recommended budget"
+  },
+  {
+    "conf": "ppo-20k",
+    "reward_mean": -1032.3411667498642,
+    "reward_std": 258.8876211430681,
+    "error_rms_mean": 55522825.05419484,
+    "note": "default PPO, longer budget"
+  },
+  {
+    "conf": "ppo-norm-20k",
+    "reward_mean": -2923.18232964476,
+    "reward_std": 660.7475611510764,
+    "error_rms_mean": 45855907.29886096,
+    "note": "PPO + VecNormalize observations"
+  },
+  {
+    "conf": "sac-20k",
+    "reward_mean": -231.28043851562765,
+    "reward_std": 16.50842696177115,
+    "error_rms_mean": 33701063.832356535,
+    "note": "off-policy SAC (freq=grad=64)"
+  },
+  {
+    "conf": "sac-norm-20k",
+    "reward_mean": -494.7201381927349,
+    "reward_std": 205.9095616055546,
+    "error_rms_mean": 31103609.631817006,
+    "note": "SAC + VecNormalize"
+  },
+  {
+    "conf": "td3-20k",
+    "reward_mean": -1121.702841540436,
+    "reward_std": 92.9754876621594,
+    "error_rms_mean": 50402175.90535708,
+    "note": "off-policy TD3"
+  },
+  {
+    "conf": "td3-norm-20k",
+    "reward_mean": -2773.8967958767025,
+    "reward_std": 1248.995238390749,
+    "error_rms_mean": 42952837.71483675,
+    "note": "TD3 + VecNormalize"
+  }
+]

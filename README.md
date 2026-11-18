@@ -136,10 +136,10 @@ metrics per environment.
 ### Known limitations
 
 `VectorSumTuner-v0` combines a saturated shared-drive residual with three slow
-tuners; the default PPO setup is unstable beyond a few thousand training steps
-(the policy drifts into drive saturation). Its recommended budget is therefore
-deliberately short, and stabilizing it (SAC/TD3, observation normalization,
-shorter episodes) is an open research direction.
+tuners; the default on-policy PPO collapses into drive saturation on longer
+budgets. A stable off-policy **SAC** preset (`experiments/vector_sum_tuner_study.py`)
+solves it: at 20k steps SAC scores -231 ± 16 vs a -268 ± 114 baseline.
+Observation normalization (`normalize_obs`) did not help on this task.
 
 ## Testing
 

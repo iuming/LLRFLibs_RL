@@ -88,6 +88,9 @@ def evaluate_episode(
 def action_from_model(model, deterministic: bool = True):
     """Build a deterministic action function from a trained SB3 model.
 
+    Observations are normalized with the model's ``VecNormalize`` wrapper when
+    the model was trained with observation normalization.
+
     Args:
         model:       Trained stable-baselines3 model.
         deterministic: Whether to act deterministically.
@@ -95,9 +98,17 @@ def action_from_model(model, deterministic: bool = True):
     Returns:
         Callable ``action(obs) -> np.ndarray``.
     """
+    from stable_baselines3.common.vec_env import VecNormalize
+
+    norm_env = model.env if isinstance(getattr(model, "env", None), VecNormalize) else None
+
+    def _normalize(obs: np.ndarray) -> np.ndarray:
+        if norm_env is not None:
+            return norm_env.normalize_obs(obs)
+        return obs
 
     def _policy(obs: np.ndarray) -> np.ndarray:
-        action, _ = model.predict(obs, deterministic=deterministic)
+        action, _ = model.predict(_normalize(obs), deterministic=deterministic)
         return np.asarray(action, dtype=np.float32)
 
     return _policy

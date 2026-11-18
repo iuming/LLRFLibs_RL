@@ -111,7 +111,9 @@ def _cmd_train(args: argparse.Namespace) -> None:
         overrides = _load_experiment(args.config)
     env_id = args.env or str(overrides.get("env", "DualLoop-v0"))
     timesteps = args.timesteps if args.timesteps is not None else overrides.get("timesteps")
-    algorithm = args.algorithm if args.algorithm is not None else str(overrides.get("algorithm", "ppo"))
+    algorithm = args.algorithm
+    if algorithm is None and overrides.get("algorithm") is not None:
+        algorithm = str(overrides["algorithm"])
     baseline = args.baseline if args.baseline is not None else str(overrides.get("baseline", "zero"))
     seed = args.seed if args.seed is not None else int(overrides.get("seed", 0))
 

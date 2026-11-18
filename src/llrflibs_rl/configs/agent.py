@@ -34,6 +34,9 @@ class AgentConfig:
         ent_coef:      Entropy coefficient (PPO); SAC manages entropy itself.
         train_freq:    SAC update frequency in steps.
         gradient_steps: SAC gradient steps per update.
+        normalize_obs:  Wrap the training environment in ``VecNormalize``
+                     (observation normalization; reward normalization kept off
+                     so reported rewards stay physical).
         verbose:       SB3 verbosity level (0 quiet, 1 tables).
         model_name:    Optional name used for the saved model.
     """
@@ -48,13 +51,14 @@ class AgentConfig:
     ent_coef: float = 0.0
     train_freq: int = 1
     gradient_steps: int = 1
+    normalize_obs: bool = False
     verbose: int = 0
     model_name: Optional[str] = None
 
     def validate(self) -> None:
         """Raise on inconsistent configuration."""
-        if self.algorithm not in ("ppo", "sac"):
-            raise ValueError("algorithm must be 'ppo' or 'sac'.")
+        if self.algorithm not in ("ppo", "sac", "td3"):
+            raise ValueError("algorithm must be 'ppo', 'sac' or 'td3'.")
         if self.timesteps <= 0:
             raise ValueError("timesteps must be positive.")
         if self.seed < 0:

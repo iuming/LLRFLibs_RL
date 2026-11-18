@@ -239,6 +239,6 @@ def recommended_timesteps(env_id: str, quick: bool = False) -> int:
         "VectorSum-v0": 60000,
         "BeamLoading-v0": 20000,
         "AdaptivePulse-v0": 10000,
-        "VectorSumTuner-v0": 4000,
+        "VectorSumTuner-v0": 20000,
         "GainScheduling-v0": 30000,
     }.get(env_id, 20000)

@@ -20,11 +20,11 @@
   {
     "env": "VectorSumTuner-v0",
     "baseline_reward": -268.3060470169175,
-    "rl_reward": -478.3779586207684,
-    "rl_reward_std": 81.1811266551696,
+    "rl_reward": -231.28043851562765,
+    "rl_reward_std": 16.50842696177115,
     "n_seeds": 4,
     "baseline_error_rms": 38131019.46122979,
-    "rl_error_rms": 40971750.62375547
+    "rl_error_rms": 33701063.832356535
   },
   {
     "env": "GainScheduling-v0",

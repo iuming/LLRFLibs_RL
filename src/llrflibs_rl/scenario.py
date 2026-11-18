@@ -378,7 +378,7 @@ def run_experiment(
     env_id: str,
     timesteps: Optional[int] = None,
     seed: int = 0,
-    algorithm: str = "ppo",
+    algorithm: Optional[str] = None,
     quick: bool = False,
     baseline: str = "zero",
     runs_dir: Optional[Path] = None,
@@ -392,7 +392,9 @@ def run_experiment(
         env_id:         Registry environment id.
         timesteps:      Training budget (recommended when ``None``).
         seed:           Random seed.
-        algorithm:      ``"ppo"`` or ``"sac"``.
+        algorithm:      ``"ppo"`` / ``"sac"`` / ``"td3"``; ``None`` uses the
+                        per-environment preset (e.g. SAC for
+                        ``VectorSumTuner-v0``).
         quick:          Use the small sanity budget.
         baseline:       Classical baseline name: ``zero`` / ``ff`` / ``pi`` / ``adrc``.
         runs_dir:       Base directory for artifacts.
@@ -416,7 +418,7 @@ def run_experiment(
     )
     seeds = evaluate_seeds if evaluate_seeds else [seed]
 
-    print_header(f"Experiment: {env_id}  (baseline={baseline}, algorithm={algorithm})")
+    print_header(f"Experiment: {env_id}  (baseline={baseline}, algorithm={cfg.algorithm})")
 
     env_factory = lambda: make(env_id)  # noqa: E731
     baseline_policy = make_baseline_policy(make(env_id), baseline)
