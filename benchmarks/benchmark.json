@@ -1,32 +1,62 @@
 [
   {
     "env": "ADRCAssist-v0",
-    "baseline_reward": -65.18904331136764,
-    "rl_reward": -65.63253125666186
+    "baseline_reward": -64.38369076145999,
+    "rl_reward": -66.87581010935688,
+    "rl_reward_std": 0.2378759420432674,
+    "n_seeds": 4,
+    "baseline_error_rms": 7864702.132940632,
+    "rl_error_rms": 7869238.381790381,
+    "baseline_flattop_error_rms": 338497.4841593326,
+    "rl_flattop_error_rms": 389564.0831364505
   },
   {
     "env": "CavityVoltage-v0",
-    "baseline_reward": -1974.1180577582604,
-    "rl_reward": -2022.3377745265411
+    "baseline_reward": -1419.8121670518606,
+    "rl_reward": -1413.8591153466446,
+    "rl_reward_std": 500.5970858613252,
+    "n_seeds": 4,
+    "baseline_error_rms": 12129902.696160562,
+    "rl_error_rms": 12036605.856745005,
+    "baseline_flattop_error_rms": 9581545.658729011,
+    "rl_flattop_error_rms": 9589452.887734046
   },
   {
     "env": "DualLoop-v0",
-    "baseline_reward": -335.94208620364924,
-    "rl_reward": -392.47846021362477
+    "baseline_reward": -366.38303200543277,
+    "rl_reward": -383.5764375739268,
+    "rl_reward_std": 81.88681294362814,
+    "n_seeds": 4,
+    "baseline_error_rms": 8888448.612306852,
+    "rl_error_rms": 9075355.341614041,
+    "baseline_flattop_error_rms": 1223949.0317444392,
+    "rl_flattop_error_rms": 1290905.5471723648
   },
   {
     "env": "FrequencyControl-v0",
-    "baseline_reward": -9541.213916228835,
-    "rl_reward": -8021.080513832074
+    "baseline_reward": -8315.366712487154,
+    "rl_reward": -7595.94107994172,
+    "rl_reward_std": 298.9680019945719,
+    "n_seeds": 4
   },
   {
     "env": "PIAssist-v0",
-    "baseline_reward": -150.1118436343907,
-    "rl_reward": -151.44827664119765
+    "baseline_reward": -153.3388285628404,
+    "rl_reward": -169.1887075218444,
+    "rl_reward_std": 1.8309610239859324,
+    "n_seeds": 4,
+    "baseline_error_rms": 9069875.657860484,
+    "rl_error_rms": 9085838.351310285,
+    "baseline_flattop_error_rms": 824790.4901715192,
+    "rl_flattop_error_rms": 892865.7134494709
   },
   {
     "env": "VectorSum-v0",
-    "baseline_reward": -1104.0769419859148,
-    "rl_reward": -520.7395202499357
+    "baseline_reward": -636.4999782252183,
+    "rl_reward": -580.5907600978841,
+    "rl_reward_std": 130.17390479009765,
+    "n_seeds": 4,
+    "baseline_error_rms": 44308374.66283117,
+    "rl_error_rms": 45761609.9783209
   }
 ]

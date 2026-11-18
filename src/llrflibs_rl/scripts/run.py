@@ -31,10 +31,10 @@ import numpy as np
 from stable_baselines3 import PPO, SAC
 
 from .. import list_env_ids, make
-from ..agents import agent_config_for, train
+from ..controllers.baselines import list_baselines
 from ..evaluation import action_from_model, evaluate_episode
 from ..evaluation.reporting import write_markdown_table
-from ..scenario import run_experiment, zero_action
+from ..scenario import run_experiment
 from ..utils import print_header
 
 __all__ = ["main"]
@@ -54,6 +54,7 @@ def _parser() -> argparse.ArgumentParser:
                          help="experiment YAML under experiments/ (env, timesteps, ...)")
     p_train.add_argument("--timesteps", type=int, default=None)
     p_train.add_argument("--algorithm", choices=["ppo", "sac"], default=None)
+    p_train.add_argument("--baseline", type=str, default=None, choices=list_baselines())
     p_train.add_argument("--seed", type=int, default=None)
     p_train.add_argument("--runs-dir", type=str, default=None)
     p_train.add_argument("--quick", action="store_true")
@@ -62,12 +63,17 @@ def _parser() -> argparse.ArgumentParser:
     p_eval = sub.add_parser("eval", help="evaluate a saved model against the baseline")
     p_eval.add_argument("--env", required=True)
     p_eval.add_argument("--model", required=True, help="path to the saved SB3 model")
+    p_eval.add_argument("--baseline", type=str, default="zero", choices=list_baselines())
     p_eval.add_argument("--seed", type=int, default=0)
     p_eval.set_defaults(func=_cmd_eval)
 
     p_bench = sub.add_parser("benchmark", help="run all environments and write a report")
-    p_bench.add_argument("--quick", action="store_true")
+    p_bench.add_argument("--quick", action="store_true",
+                         help="use the small sanity budget for every environment")
+    p_bench.add_argument("--baseline", type=str, default="zero", choices=list_baselines())
     p_bench.add_argument("--seed", type=int, default=0)
+    p_bench.add_argument("--seeds", type=int, default=3,
+                         help="number of evaluation seeds averaged per environment")
     p_bench.add_argument("--runs-dir", type=str, default=None)
     p_bench.add_argument("--out", type=str, default="benchmarks")
     p_bench.set_defaults(func=_cmd_benchmark)
@@ -104,30 +110,35 @@ def _cmd_train(args: argparse.Namespace) -> None:
     env_id = args.env or str(overrides.get("env", "DualLoop-v0"))
     timesteps = args.timesteps if args.timesteps is not None else overrides.get("timesteps")
     algorithm = args.algorithm if args.algorithm is not None else str(overrides.get("algorithm", "ppo"))
+    baseline = args.baseline if args.baseline is not None else str(overrides.get("baseline", "zero"))
     seed = args.seed if args.seed is not None else int(overrides.get("seed", 0))
 
     summary = run_experiment(
         env_id=env_id,
         timesteps=int(timesteps) if timesteps is not None else None,
         algorithm=algorithm,
+        baseline=baseline,
         seed=seed,
         quick=args.quick,
         runs_dir=Path(args.runs_dir) if args.runs_dir else None,
     )
-    print(f"\nFinished: {summary['env_id']}  baseline={summary['baseline_reward']:,.2f} "
+    print(f"\nFinished: {summary['env_id']}  [{summary['baseline']}] baseline={summary['baseline_reward']:,.2f} "
           f"RL={summary['rl_reward']:,.2f}")
 
 
 def _cmd_eval(args: argparse.Namespace) -> None:
+    from ..controllers.baselines import make_baseline_policy
+
     env = make(args.env)
     try:
         model = PPO.load(args.model)
     except Exception:
         model = SAC.load(args.model)
 
-    baseline = evaluate_episode(make(args.env), zero_action(env), seed=args.seed)
+    baseline = evaluate_episode(make(args.env), make_baseline_policy(make(args.env), args.baseline),
+                                seed=args.seed)
     rl = evaluate_episode(make(args.env), action_from_model(model), seed=args.seed)
-    print_header("Evaluation")
+    print_header(f"Evaluation  (baseline={args.baseline})")
     for key in ("reward",):
         print(f"{key:>20}: baseline={baseline[key]:,.3f}  RL={rl[key]:,.3f}")
     for key in ("error_rms", "flattop_error_rms", "amp_error_rms"):
@@ -139,21 +150,31 @@ def _cmd_eval(args: argparse.Namespace) -> None:
 def _cmd_benchmark(args: argparse.Namespace) -> None:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    evaluate_seeds = list(range(args.seed, args.seed + args.seeds))
     rows: List[Dict[str, object]] = []
     for env_id in list_env_ids():
-        print_header(f"Benchmarking {env_id}")
+        print_header(f"Benchmarking {env_id}  (baseline={args.baseline}, seeds={evaluate_seeds})")
         summary = run_experiment(
             env_id=env_id,
             seed=args.seed,
+            baseline=args.baseline,
             quick=args.quick,
             runs_dir=Path(args.runs_dir) if args.runs_dir else None,
+            evaluate_seeds=evaluate_seeds,
             verbose=False,
         )
-        rows.append({
+        row: Dict[str, object] = {
             "env": env_id,
             "baseline_reward": summary["baseline_reward"],
             "rl_reward": summary["rl_reward"],
-        })
+            "rl_reward_std": summary.get("rl_reward_std"),
+            "n_seeds": len(evaluate_seeds),
+        }
+        for key in ("error_rms", "flattop_error_rms"):
+            if f"rl_{key}" in summary:
+                row[f"baseline_{key}"] = summary[f"baseline_{key}"]
+                row[f"rl_{key}"] = summary[f"rl_{key}"]
+        rows.append(row)
 
     write_markdown_table(rows, out_dir / "benchmark.md", title="LLRF RL benchmark")
     (out_dir / "benchmark.json").write_text(

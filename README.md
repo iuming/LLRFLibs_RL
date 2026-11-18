@@ -90,8 +90,41 @@ python examples/train_and_eval.py --env VectorSum-v0  --timesteps 60000
 python examples/train_and_eval.py --env CavityVoltage-v0
 ```
 
+## Classical baselines
+
+Every training run compares RL against a classical controller selected with
+`--baseline` (default `zero`):
+
+| baseline | meaning |
+|---|---|
+| `zero` | no compensation (analytic feedforward / inner loop only) |
+| `ff`    | nominal analytical feedforward only (same as `zero` here) |
+| `pi`    | complex-PI residual (voltage/vector-sum) or detuning-PI slow loop (resonance) |
+| `adrc`  | ADRC-like PD+integral residual (voltage/vector-sum) or detuning-PI (resonance) |
+
+For the assist environments the classical controller is already the inner
+loop, so `pi` / `adrc` reduce to "PI-only" / "ADRC-only".
+
+```bash
+python -m llrflibs_rl.scripts.run train --env CavityVoltage-v0 --baseline pi --timesteps 15000
+python -m llrflibs_rl.scripts.run train --env DualLoop-v0 --baseline pi  --timesteps 30000
+python -m llrflibs_rl.scripts.run eval  --env CavityVoltage-v0 --baseline adrc --model runs/<run>/model.zip
+```
+
 Each run writes a self-contained artifact directory under `runs/`
-(`config.json`, trained model, evaluation metrics and figures).
+(`config.json`, `metrics.json`, the trained model, the training-reward curve
+`training_curve.json` and a comparison figure with **tracking-error panels
+and the RL convergence curve**).
+
+## Benchmark
+
+```bash
+python -m llrflibs_rl.scripts.run benchmark          # recommended budgets, all environments
+python -m llrflibs_rl.scripts.run benchmark --quick  # CI-style sanity check
+```
+
+Writes `benchmarks/benchmark.md` / `benchmark.json` with reward and error
+metrics per environment.
 
 ## Testing
 

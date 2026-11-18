@@ -30,6 +30,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--env", required=True, help="registered environment id")
     parser.add_argument("--timesteps", type=int, default=None)
     parser.add_argument("--algorithm", choices=["ppo", "sac"], default="ppo")
+    parser.add_argument("--baseline", type=str, default="zero",
+                        choices=["zero", "ff", "pi", "adrc"],
+                        help="classical baseline compared against RL")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--runs-dir", type=str, default=None)
     parser.add_argument("--quick", action="store_true", help="small sanity budget")
@@ -42,11 +45,12 @@ def main() -> None:
         env_id=args.env,
         timesteps=args.timesteps,
         algorithm=args.algorithm,
+        baseline=args.baseline,
         seed=args.seed,
         quick=args.quick,
         runs_dir=Path(args.runs_dir) if args.runs_dir else None,
     )
-    print(f"\n=== {summary['env_id']} ===")
+    print(f"\n=== {summary['env_id']} (baseline={summary['baseline']}) ===")
     print(f"baseline reward : {summary['baseline_reward']:,.2f}")
     print(f"RL reward       : {summary['rl_reward']:,.2f}")
     print(f"artifacts       : {summary['artifact_dir']}")

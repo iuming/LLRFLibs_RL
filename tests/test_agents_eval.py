@@ -25,6 +25,23 @@ def test_train_and_evaluate_smoke():
     assert set(metrics) >= {"reward", "error_rms", "flattop_error_rms"}
 
 
+def test_training_curve_is_recorded():
+    """Training with an eval factory fills the model's eval_curve."""
+    env_id = "DualLoop-v0"
+    cfg = agent_config_for(env_id, timesteps=800, quick=True)
+    curve = []
+    model = train(
+        lambda: rl.make(env_id),
+        cfg,
+        eval_env_factory=lambda: rl.make(env_id),
+        eval_freq=256,
+        curve=curve,
+    )
+    assert curve  # at least one evaluation point was recorded
+    assert model.eval_curve is curve
+    assert all("timesteps" in p and "reward" in p for p in curve)
+
+
 def test_evaluate_over_seeds():
     policy = lambda obs: np.zeros(1, dtype=np.float32)  # noqa: E731
     metrics = evaluate_over_seeds(lambda: rl.make("DualLoop-v0"), policy, seeds=[0, 1])
