@@ -131,7 +131,11 @@ python -m llrflibs_rl.scripts.run benchmark --quick  # CI-style sanity check
 ```
 
 Writes `benchmarks/benchmark.md` / `benchmark.json` with reward and error
-metrics per environment.
+metrics per environment. Each environment has an **algorithm preset** picked
+by the cross-environment study (`experiments/algorithm_comparison.py`):
+PPO by default, off-policy SAC for `DualLoop-v0` / `VectorSumTuner-v0`, and
+TD3 for `GainScheduling-v0`. Run `python -u experiments/algorithm_comparison.py`
+to reproduce the algorithm study.
 
 ### Known limitations
 

@@ -1,7 +1,7 @@
 # RL gain scheduling of a classical PI inner loop — experiment spec.
 experiment:
   env: GainScheduling-v0
-  algorithm: ppo
+  algorithm: td3
   timesteps: 30000
   seed: 0
   baseline: pi
@@ -10,5 +10,5 @@ experiment:
 notes: >
   RL chooses kp/ki sample by sample instead of adding a residual.  The "pi"
   baseline evaluates the fixed nominal gains, so "RL vs pi" is exactly the
-  adaptive-versus-fixed gain comparison.  High gains everywhere destabilize
-  the transient; the policy must raise the gain only during flattop.
+  adaptive-versus-fixed gain comparison.  Off-policy TD3 is the best found
+  algorithm (comparison study): -267,780 vs a -353,650 fixed-gain baseline.

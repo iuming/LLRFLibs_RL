@@ -11,6 +11,24 @@
     "rl_flattop_error_rms": 389564.0831364505
   },
   {
+    "env": "AdaptivePulse-v0",
+    "baseline_reward": -9.28392118862088,
+    "rl_reward": -6.075863210929002,
+    "rl_reward_std": 0.0,
+    "n_seeds": 4
+  },
+  {
+    "env": "BeamLoading-v0",
+    "baseline_reward": -1632.344810267823,
+    "rl_reward": -1698.3746525162144,
+    "rl_reward_std": 1291.7906650226473,
+    "n_seeds": 4,
+    "baseline_error_rms": 12820223.211126259,
+    "rl_error_rms": 12682152.349199384,
+    "baseline_flattop_error_rms": 11895070.779413644,
+    "rl_flattop_error_rms": 11937289.688505745
+  },
+  {
     "env": "CavityVoltage-v0",
     "baseline_reward": -1419.8121670518606,
     "rl_reward": -1413.8591153466446,
@@ -24,13 +42,13 @@
   {
     "env": "DualLoop-v0",
     "baseline_reward": -366.38303200543277,
-    "rl_reward": -383.5764375739268,
-    "rl_reward_std": 81.88681294362814,
+    "rl_reward": -164.34404233453367,
+    "rl_reward_std": 3.945535645873588,
     "n_seeds": 4,
     "baseline_error_rms": 8888448.612306852,
-    "rl_error_rms": 9075355.341614041,
+    "rl_error_rms": 8972722.709731646,
     "baseline_flattop_error_rms": 1223949.0317444392,
-    "rl_flattop_error_rms": 1290905.5471723648
+    "rl_flattop_error_rms": 1316359.3078184978
   },
   {
     "env": "FrequencyControl-v0",
@@ -38,6 +56,17 @@
     "rl_reward": -7595.94107994172,
     "rl_reward_std": 298.9680019945719,
     "n_seeds": 4
+  },
+  {
+    "env": "GainScheduling-v0",
+    "baseline_reward": -353650.3942026065,
+    "rl_reward": -267779.9295686037,
+    "rl_reward_std": 48354.69819215649,
+    "n_seeds": 4,
+    "baseline_error_rms": 108215884.3582564,
+    "rl_error_rms": 97288571.73878181,
+    "baseline_flattop_error_rms": 116843977.0695009,
+    "rl_flattop_error_rms": 102690016.7161454
   },
   {
     "env": "PIAssist-v0",
@@ -58,5 +87,14 @@
     "n_seeds": 4,
     "baseline_error_rms": 44308374.66283117,
     "rl_error_rms": 45761609.9783209
+  },
+  {
+    "env": "VectorSumTuner-v0",
+    "baseline_reward": -268.3060470169175,
+    "rl_reward": -231.28043851562765,
+    "rl_reward_std": 16.50842696177115,
+    "n_seeds": 4,
+    "baseline_error_rms": 38131019.46122979,
+    "rl_error_rms": 33701063.832356535
   }
 ]

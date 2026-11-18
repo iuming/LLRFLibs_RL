@@ -21,21 +21,18 @@ from ..registry import recommended_timesteps
 
 __all__ = ["agent_config_for"]
 
-#: Per-environment overrides on top of the defaults.  ``VectorSumTuner-v0``
-#: is unstable under the default on-policy PPO on longer budgets; a stable
-#: off-policy SAC setup (study: experiments/vector_sum_tuner_study.py) is used
-#: instead.
+#: Per-environment agent overrides, selected by the cross-environment study in
+#: ``experiments/algorithm_comparison.py`` (recommended budget, 4-seed eval).
+#: Off-policy variants use train_freq=gradient_steps=64, batch_size=256.
+_OFFPOLICY = dict(train_freq=64, gradient_steps=64, batch_size=256)
+
 _ENV_AGENT_OVERRIDES: Dict[str, Dict[str, object]] = {
-    "VectorSumTuner-v0": {
-        "algorithm": "sac",
-        "train_freq": 64,
-        "gradient_steps": 64,
-        "batch_size": 256,
-        "normalize_obs": False,
-    },
-    "FrequencyControl-v0": {
-        "algorithm": "sac",
-    },
+    # Off-policy SAC is stable and clearly beats PPO on the slow-tuner
+    # cooperative tasks and the per-cavity tuner variant.
+    "DualLoop-v0": {"algorithm": "sac", **_OFFPOLICY},
+    "VectorSumTuner-v0": {"algorithm": "sac", **_OFFPOLICY},
+    # Off-policy TD3 is the best found for the gain-scheduling task.
+    "GainScheduling-v0": {"algorithm": "td3", **_OFFPOLICY},
 }
 
 
