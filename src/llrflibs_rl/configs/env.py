@@ -126,6 +126,8 @@ class ResidualEnvConfig(EnvConfig):
     drive_limit_ratio: float = 0.10
     reference_detuning: Optional[float] = None
     drive_effort_reference: str = "ff"
+    lorentz_k: float = 0.0
+    lorentz_tau: float = 5.0e-4
 
     def validate(self) -> None:
         super().validate()
@@ -133,6 +135,10 @@ class ResidualEnvConfig(EnvConfig):
             raise ValueError("drive_limit_ratio must be positive.")
         if self.drive_effort_reference not in ("ff", "total"):
             raise ValueError("drive_effort_reference must be 'ff' or 'total'.")
+        if self.lorentz_k < 0:
+            raise ValueError("lorentz_k must be non-negative.")
+        if self.lorentz_tau <= 0:
+            raise ValueError("lorentz_tau must be positive.")
 
     def __post_init__(self) -> None:
         self.validate()
@@ -149,6 +155,8 @@ class FrequencyEnvConfig(EnvConfig):
         base_detuning:      Static detuning offset of the disturbance, rad/s.
         disturbance_amp:    Amplitude of the sinusoidal microphonics, rad/s.
         disturbance_freq:   Frequency of the sinusoidal microphonics, Hz.
+        disturbance_type:   ``"sinusoidal"`` / ``"step"`` / ``"sweep"``.
+        disturbance_step_onset: Onset time of the step disturbance, s.
         randomize_disturbance: Randomize the disturbance phase each reset.
     """
 
@@ -158,6 +166,8 @@ class FrequencyEnvConfig(EnvConfig):
     base_detuning: float = 2.0 * np.pi * 2.0e2
     disturbance_amp: float = 2.0 * np.pi * 2.0e2
     disturbance_freq: float = 250.0
+    disturbance_type: str = "sinusoidal"
+    disturbance_step_onset: float = 6.0e-4
     randomize_disturbance: bool = True
 
     def validate(self) -> None:
@@ -172,6 +182,10 @@ class FrequencyEnvConfig(EnvConfig):
             raise ValueError("disturbance_amp must be non-negative.")
         if self.disturbance_freq < 0:
             raise ValueError("disturbance_freq must be non-negative.")
+        if self.disturbance_type not in ("sinusoidal", "step", "sweep"):
+            raise ValueError("disturbance_type must be 'sinusoidal', 'step' or 'sweep'.")
+        if self.disturbance_step_onset < 0:
+            raise ValueError("disturbance_step_onset must be non-negative.")
 
     def __post_init__(self) -> None:
         self.validate()
@@ -187,6 +201,8 @@ class DualLoopEnvConfig(EnvConfig):
         base_detuning:      Static detuning offset of the disturbance, rad/s.
         disturbance_amp / disturbance_freq / randomize_disturbance:
                     Same meaning as in :class:`FrequencyEnvConfig`.
+        disturbance_type / disturbance_step_onset:
+                    Same meaning as in :class:`FrequencyEnvConfig`.
         kp / ki:            Gain of the inner complex-PI fast loop.
     """
 
@@ -195,6 +211,8 @@ class DualLoopEnvConfig(EnvConfig):
     base_detuning: float = 2.0 * np.pi * 2.0e2
     disturbance_amp: float = 2.0 * np.pi * 2.0e2
     disturbance_freq: float = 250.0
+    disturbance_type: str = "sinusoidal"
+    disturbance_step_onset: float = 6.0e-4
     randomize_disturbance: bool = True
     kp: float = 0.8
     ki: float = 2.0e5
@@ -211,6 +229,10 @@ class DualLoopEnvConfig(EnvConfig):
             raise ValueError("disturbance_amp must be non-negative.")
         if self.disturbance_freq < 0:
             raise ValueError("disturbance_freq must be non-negative.")
+        if self.disturbance_type not in ("sinusoidal", "step", "sweep"):
+            raise ValueError("disturbance_type must be 'sinusoidal', 'step' or 'sweep'.")
+        if self.disturbance_step_onset < 0:
+            raise ValueError("disturbance_step_onset must be non-negative.")
 
     def __post_init__(self) -> None:
         self.validate()

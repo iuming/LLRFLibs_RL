@@ -79,6 +79,29 @@ def _parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--runs-dir", type=str, default=None)
     p_bench.add_argument("--out", type=str, default="benchmarks")
     p_bench.set_defaults(func=_cmd_benchmark)
+
+    p_verify = sub.add_parser("verify", help="check the Gymnasium contract of environments")
+    p_verify.add_argument("--envs", type=str, default=None,
+                          help="comma-separated ids (default: all)")
+    p_verify.add_argument("--n-steps", type=int, default=60)
+    p_verify.set_defaults(func=_cmd_verify)
+
+    p_gallery = sub.add_parser("gallery", help="render baseline-vs-RL figures from the zoo")
+    p_gallery.add_argument("--envs", type=str, default=None,
+                           help="comma-separated ids (default: all with a saved model)")
+    p_gallery.add_argument("--out", type=str, default="gallery")
+    p_gallery.add_argument("--zoo-dir", type=str, default=None)
+    p_gallery.set_defaults(func=_cmd_gallery)
+
+    p_zoo = sub.add_parser("zoo", help="managed trained-model storage")
+    zoo_sub = p_zoo.add_subparsers(dest="zoo_command", required=True)
+    z_list = zoo_sub.add_parser("list", help="list saved models")
+    z_list.add_argument("--zoo-dir", type=str, default=None)
+    z_list.set_defaults(func=_cmd_zoo_list)
+    z_latest = zoo_sub.add_parser("latest", help="show the latest model of an environment")
+    z_latest.add_argument("--env", required=True)
+    z_latest.add_argument("--zoo-dir", type=str, default=None)
+    z_latest.set_defaults(func=_cmd_zoo_latest)
     return parser
 
 
@@ -190,6 +213,77 @@ def _cmd_benchmark(args: argparse.Namespace) -> None:
         json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"Benchmark report written to {out_dir / 'benchmark.md'}")
+
+
+def _cmd_verify(args: argparse.Namespace) -> None:
+    from ..utils.verifier import verify_all_environments
+
+    env_ids = _env_list(args.envs)
+    reports = verify_all_environments(lambda: env_ids, n_steps=args.n_steps)
+    ok = 0
+    for report in reports:
+        print(report.fmt())
+        ok += int(report.passed)
+    print(f"\n{ok}/{len(reports)} environments passed.")
+    if ok != len(reports):
+        raise SystemExit(1)
+
+
+def _env_list(envs: Optional[str]) -> List[str]:
+    if envs is None:
+        return list_env_ids()
+    return [e.strip() for e in envs.split(",") if e.strip()]
+
+
+def _cmd_gallery(args: argparse.Namespace) -> None:
+    from ..agents.model_zoo import ModelZoo
+    from ..controllers.baselines import make_baseline_policy
+    from ..evaluation import action_from_model
+    from ..scenario import rollout_episode
+    from ..utils.plotting import plot_comparison
+
+    zoo = ModelZoo(Path(args.zoo_dir) if args.zoo_dir else None)
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rendered = 0
+    for env_id in _env_list(args.envs):
+        model = zoo.latest(env_id)
+        if model is None:
+            print(f"skip {env_id}: no zoo model (train one with `run.py train`)")
+            continue
+        env = make(env_id)
+        baseline_wave = rollout_episode(env, make_baseline_policy(env, "zero"), seed=0)
+        rl_wave = rollout_episode(env, action_from_model(model), seed=0)
+        probe = make(env_id)
+        probe.reset(seed=0)
+        path = out_dir / f"{env_id}.png"
+        plot_comparison(probe, baseline_wave, rl_wave, "zero", [], path)
+        rendered += 1
+        print(f"rendered {path}")
+    print(f"gallery: {rendered} figure(s) written to {out_dir}")
+
+
+def _cmd_zoo_list(args: argparse.Namespace) -> None:
+    from ..agents.model_zoo import ModelZoo
+
+    rows = ModelZoo(Path(args.zoo_dir) if args.zoo_dir else None).list()
+    if not rows:
+        print("(zoo is empty)")
+        return
+    for row in rows:
+        print("{env_id}  tag={tag}  algo={algorithm}  {model_path}".format(**row))
+
+
+def _cmd_zoo_latest(args: argparse.Namespace) -> None:
+    from ..agents.model_zoo import ModelZoo
+
+    zoo = ModelZoo(Path(args.zoo_dir) if args.zoo_dir else None)
+    model = zoo.latest(args.env)
+    if model is None:
+        print(f"no zoo model for {args.env}")
+        return
+    meta = zoo.metadata(args.env)
+    print(meta or f"loaded {args.env} model")
 
 
 def main(argv: Optional[List[str]] = None) -> None:

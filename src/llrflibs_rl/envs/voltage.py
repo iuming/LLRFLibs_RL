@@ -31,6 +31,7 @@ from ..configs.env import ResidualEnvConfig
 from ..configs.task import RewardConfig
 from ..controllers.feedback import ADRCController, ComplexPIController
 from ..plants.cavity_voltage import CavityVoltagePlant
+from ..plants.lorentz import LorentzDriftDetuning
 from ..tasks.events import apply_drive_limits
 from ..tasks.observations import build_assist_obs, build_voltage_obs
 from ..tasks.reference import PulseReference
@@ -122,9 +123,20 @@ class CavityVoltageEnv(BaseLLRFEnv):
             )
         else:
             self._detuning_wave = None
-        # Half-bandwidth drift forces the time-varying plant path.
+        # Half-bandwidth drift and dynamic Lorentz drift force the time-varying
+        # plant path (they need a base waveform to add themselves to).
         if self.env_cfg.half_bw_drift_frac > 0.0 and self._detuning_wave is None:
             self._detuning_wave = np.full(self.episode_len, float(detuning))
+        if self.env_cfg.lorentz_k > 0.0 and self._detuning_wave is None:
+            self._detuning_wave = np.full(self.episode_len, float(detuning))
+
+    def _current_detuning(self, idx: int) -> Optional[float]:
+        """Detuning of the current sample (base wave + dynamic Lorentz)."""
+        dw = float(self._detuning_wave[idx]) if self._detuning_wave is not None else None
+        if self._lorentz is not None:
+            base = float(self._detuning_wave[idx]) if self._detuning_wave is not None else 0.0
+            return base + self._lorentz.step(self._plant.vc)
+        return dw
 
     def _current_half_bw(self) -> Optional[float]:
         """Half bandwidth of the current sample (``None`` when not drifting)."""
@@ -229,6 +241,13 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._plant = CavityVoltagePlant(self.cavity, self.env_cfg.Ts, self._episode_detuning)
         self._plant.reset()
         self._build_detuning_wave(self._episode_detuning)
+        self._lorentz = (
+            LorentzDriftDetuning(
+                self.env_cfg.lorentz_k, self.env_cfg.lorentz_tau, self.env_cfg.Ts
+            )
+            if self.env_cfg.lorentz_k > 0.0
+            else None
+        )
         self._last_action = 0.0 + 0.0j
         self._drive_total = self._reference.vf_ff_at(0)
         self._step_index = 0
@@ -250,7 +269,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         drive = self._delay_drive(drive)
 
         beam = self._beam_at(idx)
-        dw = float(self._detuning_wave[idx]) if self._detuning_wave is not None else None
+        dw = self._current_detuning(idx)
         hbw = self._current_half_bw()
         self._plant.step(drive, beam=beam, detuning=dw, half_bw=hbw)
         self._drive_total = drive
@@ -314,8 +333,14 @@ class PIAssistEnv(CavityVoltageEnv):
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[str, float]]:
-        obs, info = super().reset(seed=seed, options=options)
+        # Reset the controller state BEFORE super().reset() captures the first
+        # observation, otherwise the first-frame feedback is stale.
         self._controller.reset()
+        self._meas_vc = 0.0 + 0.0j
+        self._drive_fb = 0.0 + 0.0j
+        self._drive_rl = 0.0 + 0.0j
+        self._last_error = self._reference.sp_at(0)
+        obs, info = super().reset(seed=seed, options=options)
         self._meas_vc = self._measure(self._plant.vc, self.obs_scale)
         self._drive_fb = 0.0 + 0.0j
         self._drive_rl = 0.0 + 0.0j
@@ -425,8 +450,16 @@ class ADRCAssistEnv(CavityVoltageEnv):
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[str, float]]:
-        obs, info = super().reset(seed=seed, options=options)
+        # Reset the controller state BEFORE super().reset() captures the first
+        # observation (see PIAssistEnv.reset).
         self._controller.reset()
+        self._meas_vc = 0.0 + 0.0j
+        self._meas_vf = 0.0 + 0.0j
+        self._drive_fb = 0.0 + 0.0j
+        self._drive_rl = 0.0 + 0.0j
+        self._vc_est = 0.0 + 0.0j
+        self._f_est = 0.0 + 0.0j
+        obs, info = super().reset(seed=seed, options=options)
         self._meas_vc = self._measure(self._plant.vc, self.obs_scale)
         self._meas_vf = self._measure(self._drive_total, self.obs_scale)
         self._drive_fb = 0.0 + 0.0j

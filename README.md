@@ -64,9 +64,17 @@ model = train(env, AgentConfig(timesteps=30_000))
 Or from the command line:
 
 ```bash
+python -m llrflibs_rl.scripts.run list
 python -m llrflibs_rl.scripts.run train --env DualLoop-v0 --timesteps 30000
-python -m llrflibs_rl.scripts.run benchmark --quick
+python -m llrflibs_rl.scripts.run benchmark --seeds 4       # full report
+python -m llrflibs_rl.scripts.run verify                    # contract-check all envs
+python -m llrflibs_rl.scripts.run zoo list                  # trained-model zoo
+python -m llrflibs_rl.scripts.run gallery                   # render figures from zoo models
 ```
+
+Short-horizon resolution variants of the core environments are registered as
+`...-v1` ids (e.g. `CavityVoltage-v1`), and a curated
+`llrflibs_rl.api` facade bundles the everyday functions.
 
 See `examples/` for scenario scripts, `experiments/` for reproducible
 experiment configurations, and `docs/ARCHITECTURE.md` for the package design.

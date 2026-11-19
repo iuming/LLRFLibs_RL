@@ -146,14 +146,19 @@ class GainSchedulingEnv(CavityVoltageEnv):
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> Tuple[np.ndarray, Dict[str, float]]:
-        obs, info = super().reset(seed=seed, options=options)
+        # Reset the controller state BEFORE super().reset() captures the first
+        # observation (see PIAssistEnv.reset).
         self._controller.reset()
-        self._meas_vc = self._measure(self._plant.vc, self.obs_scale)
+        self._meas_vc = 0.0 + 0.0j
         self._drive_fb = 0.0 + 0.0j
         self._drive_rl = 0.0 + 0.0j
         self._kp = float(self.gs_cfg.kp_nom)
         self._ki = float(self.gs_cfg.ki_nom)
         self._last_gain_action = np.zeros(2, dtype=np.float32)
+        obs, info = super().reset(seed=seed, options=options)
+        self._meas_vc = self._measure(self._plant.vc, self.obs_scale)
+        self._drive_fb = 0.0 + 0.0j
+        self._drive_rl = 0.0 + 0.0j
         return obs, info
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:

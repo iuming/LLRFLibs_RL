@@ -31,7 +31,7 @@ from ..configs.env import DualLoopEnvConfig, FrequencyEnvConfig
 from ..configs.task import RewardConfig
 from ..controllers.feedback import ComplexPIController
 from ..controllers.resonance import FirstOrderActuator
-from ..plants.disturbance import SinusoidalDisturbance
+from ..plants.disturbance import SinusoidalDisturbance, build_disturbance_wave
 from ..plants.resonance import ResonancePlant
 from ..tasks.events import apply_drive_limits
 from ..tasks.observations import build_dual_loop_obs, build_frequency_obs
@@ -103,7 +103,17 @@ class FrequencyEnv(BaseLLRFEnv):
             if self.env_cfg.randomize_disturbance
             else 0.0
         )
-        self._dist_wave = self._disturbance.build(phase=phase, offset=offset)
+        self._dist_wave = build_disturbance_wave(
+            self.env_cfg.disturbance_type,
+            self.episode_len,
+            self.env_cfg.Ts,
+            base=self.env_cfg.base_detuning,
+            amplitude=self.env_cfg.disturbance_amp,
+            frequency=self.env_cfg.disturbance_freq,
+            phase=phase,
+            offset=offset,
+            onset=self.env_cfg.disturbance_step_onset,
+        )
 
     def _get_obs(self) -> np.ndarray:
         idx = min(self._step_index, self.episode_len - 1)
@@ -306,7 +316,17 @@ class DualLoopEnv(BaseLLRFEnv):
             if self.env_cfg.randomize_disturbance
             else 0.0
         )
-        self._dist_wave = self._disturbance.build(phase=phase, offset=offset)
+        self._dist_wave = build_disturbance_wave(
+            self.env_cfg.disturbance_type,
+            self.episode_len,
+            self.env_cfg.Ts,
+            base=self.env_cfg.base_detuning,
+            amplitude=self.env_cfg.disturbance_amp,
+            frequency=self.env_cfg.disturbance_freq,
+            phase=phase,
+            offset=offset,
+            onset=self.env_cfg.disturbance_step_onset,
+        )
 
     def _get_obs(self) -> np.ndarray:
         idx = min(self._step_index, self.episode_len - 1)

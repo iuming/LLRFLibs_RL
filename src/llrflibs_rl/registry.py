@@ -215,7 +215,44 @@ def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
             "reward_cfg": RewardConfig(),
         },
     }
-    return l4.get(env_id, {})
+    if env_id in l4:
+        return l4[env_id]
+
+    # Short-horizon resolution variants (v1 series). Episode length stays
+    # above filling+flattop (1130 samples) of the nominal cavity.
+    v1: Dict[str, Dict[str, Any]] = {
+        "CavityVoltage-v1": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(episode_len=1400, microphonics_random_phase=True),
+            "reward_cfg": RewardConfig(),
+        },
+        "PIAssist-v1": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(episode_len=1400),
+            "reward_cfg": RewardConfig(),
+            "pi_cfg": PIControllerConfig(),
+        },
+        "ADRCAssist-v1": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": ResidualEnvConfig(episode_len=1400),
+            "reward_cfg": RewardConfig(),
+            "adrc_cfg": ADRCControllerConfig(),
+        },
+        "DualLoop-v1": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": DualLoopEnvConfig(episode_len=1400),
+            "reward_cfg": RewardConfig(),
+        },
+        "VectorSum-v1": {
+            "cavities": vs_cavities,
+            "env_cfg": VectorSumEnvConfig(cavities=vs_cavities, episode_len=1400),
+            "reward_cfg": RewardConfig(),
+        },
+        "AdaptivePulse-v1": {
+            "config": AdaptivePulseConfig(cavity=nominal_sc_cavity(), n_pulses=20),
+        },
+    }
+    return v1.get(env_id, {})
 
 
 def recommended_timesteps(env_id: str, quick: bool = False) -> int:
@@ -241,4 +278,10 @@ def recommended_timesteps(env_id: str, quick: bool = False) -> int:
         "AdaptivePulse-v0": 10000,
         "VectorSumTuner-v0": 20000,
         "GainScheduling-v0": 30000,
+        "CavityVoltage-v1": 7000,
+        "PIAssist-v1": 25000,
+        "ADRCAssist-v1": 25000,
+        "DualLoop-v1": 20000,
+        "VectorSum-v1": 40000,
+        "AdaptivePulse-v1": 15000,
     }.get(env_id, 20000)

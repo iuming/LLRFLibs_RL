@@ -29,6 +29,7 @@ from gymnasium import spaces
 from ..configs.cavity import CavityParams
 from ..configs.env import ResidualEnvConfig
 from ..configs.task import RewardConfig
+from ..plants.beam_schedule import BeamSchedule
 from ..plants.cavity_voltage import CavityVoltagePlant
 from ..tasks.reference import PulseReference
 from ..tasks.rewards import RegionScaler
@@ -53,12 +54,15 @@ class BeamLoadingConfig(ResidualEnvConfig):
                              the cavity filling length.
         reference_beam_current: Beam current used to build the analytical
                              feedforward (0 gives a beam-free feedforward).
+        beam_schedule:       Optional :class:`BeamSchedule` overriding the
+                             simple onset (transient trips, partial levels).
     """
 
     beam_current_plant: float = 8e-3
     beam_phase_deg_plant: float = 0.0
     beam_on_start: Optional[int] = None
     reference_beam_current: float = 0.0
+    beam_schedule: Optional[BeamSchedule] = None
 
     def validate(self) -> None:
         super().validate()
@@ -116,10 +120,13 @@ class BeamLoadingEnv(CavityVoltageEnv):
             env_cfg.reference_detuning,
         )
         self._beam_wave = np.asarray(beam_ref.vb, dtype=np.complex128).copy()
-        on_start = (
-            int(env_cfg.beam_on_start) if env_cfg.beam_on_start is not None else cavity.filling_len
-        )
-        self._beam_wave[: int(on_start)] = 0.0
+        if env_cfg.beam_schedule is not None:
+            self._beam_wave = env_cfg.beam_schedule.apply_to(self._beam_wave)
+        else:
+            on_start = (
+                int(env_cfg.beam_on_start) if env_cfg.beam_on_start is not None else cavity.filling_len
+            )
+            self._beam_wave[: int(on_start)] = 0.0
 
     def _beam_at(self, step_index: int) -> complex:
         idx = min(int(step_index), self.episode_len - 1)

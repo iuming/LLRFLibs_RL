@@ -83,6 +83,44 @@ _registry.register(
     kind="voltage",
 )
 
+# Short-horizon (episode 1200) resolution variants of the core environments.
+_registry.register(
+    "CavityVoltage-v1",
+    description="CavityVoltage-v0 with a shorter (1400-sample) episode.",
+    entry=CavityVoltageEnv,
+    kind="voltage",
+)
+_registry.register(
+    "PIAssist-v1",
+    description="PIAssist-v0 with a shorter (1400-sample) episode.",
+    entry=PIAssistEnv,
+    kind="voltage",
+)
+_registry.register(
+    "ADRCAssist-v1",
+    description="ADRCAssist-v0 with a shorter (1400-sample) episode.",
+    entry=ADRCAssistEnv,
+    kind="voltage",
+)
+_registry.register(
+    "DualLoop-v1",
+    description="DualLoop-v0 with a shorter (1400-sample) episode.",
+    entry=DualLoopEnv,
+    kind="resonance",
+)
+_registry.register(
+    "VectorSum-v1",
+    description="VectorSum-v0 with a shorter (1400-sample) episode.",
+    entry=VectorSumEnv,
+    kind="vectormodule",
+)
+_registry.register(
+    "AdaptivePulse-v1",
+    description="AdaptivePulse-v0 with a longer 20-pulse adaptation window.",
+    entry=AdaptivePulseEnv,
+    kind="pulse",
+)
+
 __all__ = [
     "ADRCAssistEnv",
     "AdaptivePulseEnv",

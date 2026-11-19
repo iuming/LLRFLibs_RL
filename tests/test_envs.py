@@ -36,41 +36,43 @@ def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_confi
     spec = rl.get_spec(env_id)
     assert spec.entry is not None
 
-    if env_id in ("CavityVoltage-v0", "PIAssist-v0", "ADRCAssist-v0"):
+    # Resolution variants reuse the constructor of their -v0 base.
+    kind = env_id.replace("-v1", "-v0")
+    if kind in ("CavityVoltage-v0", "PIAssist-v0", "ADRCAssist-v0"):
         env = rl.make(env_id, cavity=fast_cavity, env_cfg=fast_env_config,
                       reward_cfg=RewardConfig())
-    elif env_id == "GainScheduling-v0":
+    elif kind == "GainScheduling-v0":
         env = rl.make(env_id, cavity=fast_cavity,
                       env_cfg=GainSchedulingConfig(**asdict(fast_env_config)),
                       reward_cfg=RewardConfig())
-    elif env_id == "BeamLoading-v0":
+    elif kind == "BeamLoading-v0":
         env = rl.make(env_id, cavity=fast_cavity,
                       env_cfg=BeamLoadingConfig(**asdict(fast_env_config)),
                       reward_cfg=RewardConfig())
-    elif env_id == "AdaptivePulse-v0":
+    elif kind == "AdaptivePulse-v0":
         env = rl.make(env_id, config=AdaptivePulseConfig(
             cavity=fast_cavity, pulse_len=600, n_pulses=8))
-    elif env_id in ("VectorSum-v0", "VectorSumTuner-v0"):
+    elif kind in ("VectorSum-v0", "VectorSumTuner-v0"):
         small_cavities = [fast_cavity, fast_cavity, fast_cavity]
         env = rl.make(
             env_id,
             cavities=small_cavities,
             env_cfg=VectorSumEnvConfig(
                 cavities=small_cavities,
-                tuner_action=(env_id == "VectorSumTuner-v0"),
+                tuner_action=(kind == "VectorSumTuner-v0"),
                 episode_len=fast_env_config.episode_len,
                 randomize_detuning=0.0, measurement_noise_std=0.0, loop_delay_steps=0,
                 max_drive_abs=None, max_drive_slew_per_step=None,
             ),
             reward_cfg=RewardConfig(),
         )
-    elif env_id == "FrequencyControl-v0":
+    elif kind == "FrequencyControl-v0":
         env = rl.make(env_id, cavity=fast_cavity, env_cfg=FrequencyEnvConfig(
             episode_len=fast_env_config.episode_len, measurement_noise_std=0.0,
             loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,
             max_drive_abs=None, max_drive_slew_per_step=None,
         ), reward_cfg=RewardConfig())
-    else:  # DualLoop-v0
+    else:  # DualLoop-v0 / DualLoop-v1
         env = rl.make(env_id, cavity=fast_cavity, env_cfg=DualLoopEnvConfig(
             episode_len=fast_env_config.episode_len, measurement_noise_std=0.0,
             loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,

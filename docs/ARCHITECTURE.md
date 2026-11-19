@@ -74,17 +74,18 @@ pyproject.toml
 README.md
 src/llrflibs_rl/
   __init__.py        public API, registers environments on import
+  api.py             batteries-included facade (llrflibs_rl.api)
   registry.py        register / make / list / recommended_timesteps
-  scenario.py        run_experiment(...) + plotting + artifact writing
+  scenario.py        run_experiment(...) + artifact writing
   configs/           cavity.py · env.py · task.py · controller.py · agent.py
-  plants/            cavity_voltage.py · resonance.py · vectormodule.py · disturbance.py
+  plants/            cavity_voltage.py · resonance.py · vectormodule.py · beam_schedule.py · lorentz.py · disturbance.py
   tasks/             reference.py · observations.py · rewards.py · events.py
   controllers/       feedback.py (PI/ADRC) · feedforward.py (FF/ILC) · resonance.py (actuator) · baselines.py
   envs/              core.py · voltage.py · gain_scheduling.py · resonance.py · vectormodule.py · pulse_to_pulse.py · wrappers.py
-  agents/            trainer.py (train/train_ppo/train_sac) · presets.py
+  agents/            trainer.py (PPO/SAC/TD3 + VecNormalize) · presets.py · model_zoo.py
   evaluation/        metrics.py · reporting.py
-  scripts/           run.py (CLI: list/train/eval/benchmark)
-  utils/             seeding.py · artifacts.py · logging.py
+  scripts/           run.py (CLI: list/train/eval/benchmark/verify/gallery/zoo)
+  utils/             seeding.py · artifacts.py · plotting.py · verifier.py · logging.py
 tests/               pytest suite (all layers)
 examples/            quickstart.py · train_and_eval.py
 experiments/         *.yaml — reproducible experiment specifications
@@ -130,6 +131,29 @@ one-line configuration change instead of a physics edit.
 `scenario.run_experiment(...)` and the CLI write a timestamped directory under
 `runs/` containing `config.json`, `metrics.json`, the trained model and a
 comparison figure — a complete record of one experiment.
+
+### 4.5 Engineering tools
+
+- `llrflibs_rl.api` — batteries-included facade: `make`, `train`,
+  `agent_config_for`, `evaluate_episode`, `run_experiment`, `verify_environment`.
+- `agents/model_zoo.py` — managed model storage (`zoo list | latest`,
+  `gallery` renders baseline-vs-RL figures from the zoo).
+- `utils/verifier.py` — Gymnasium-contract checker (`verify` CLI subcommand,
+  used by CI); it caught and fixed a real first-frame stale-feedback bug in
+  the assist environments.
+- `utils/plotting.py` — the reusable comparison figures (moved out of the
+  scenario runner).
+
+### 4.6 Physics richness
+
+- `plants/beam_schedule.py` — declarative beam segments (onset, trips,
+  partial fill), consumed by `BeamLoading-v0`.
+- `plants/lorentz.py` — dynamic Lorentz-force detuning  driven by ``|vc|^2``;
+  enable with ``lorentz_k`` in the residual env config.
+- `plants/disturbance.py` — sinusoidal / step / sweep disturbance generators
+  selectable via ``disturbance_type`` in the resonance configs.
+- Resolution variants (`-v1`): `CavityVoltage/PIAssist/ADRCAssist/DualLoop/
+  VectorSum` at 1400-sample episodes and `AdaptivePulse` with 20 pulses.
 
 ## 5. Guidelines for contributors
 

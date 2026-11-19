@@ -30,6 +30,7 @@ _ENV_AGENT_OVERRIDES: Dict[str, Dict[str, object]] = {
     # Off-policy SAC is stable and clearly beats PPO on the slow-tuner
     # cooperative tasks and the per-cavity tuner variant.
     "DualLoop-v0": {"algorithm": "sac", **_OFFPOLICY},
+    "DualLoop-v1": {"algorithm": "sac", **_OFFPOLICY},
     "VectorSumTuner-v0": {"algorithm": "sac", **_OFFPOLICY},
     # Off-policy TD3 is the best found for the gain-scheduling task.
     "GainScheduling-v0": {"algorithm": "td3", **_OFFPOLICY},
