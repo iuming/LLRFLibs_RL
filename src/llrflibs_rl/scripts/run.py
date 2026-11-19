@@ -493,12 +493,20 @@ def _cmd_diag(args: argparse.Namespace) -> None:
 
 
 def _cmd_demo(args: argparse.Namespace) -> None:
-    import matplotlib
+    requested_live = args.show or args.live if hasattr(args, "live") else args.show
+    from ..envs.render import ensure_gui_backend
 
-    backend = matplotlib.get_backend().lower()
-    interactive = any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx"))
-    if not args.show and interactive:
-        matplotlib.use("Agg", force=True)  # headless default for CI / scripts
+    if requested_live:
+        gui = ensure_gui_backend()
+        if not gui:
+            print("warning: no interactive matplotlib backend available; saving a PNG only.")
+    else:
+        import matplotlib
+
+        backend = matplotlib.get_backend().lower()
+        if any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx")):
+            matplotlib.use("Agg", force=True)
+        gui = False
 
     import matplotlib.pyplot as plt
 
@@ -506,11 +514,11 @@ def _cmd_demo(args: argparse.Namespace) -> None:
     from ..envs.render import RenderableEnv
 
     env = RenderableEnv(
-        make(args.env), render_mode="human" if (args.show and interactive) else "rgb_array",
+        make(args.env), render_mode="human" if gui else "rgb_array",
         title=f"{args.env} — baseline={args.policy}",
     )
     policy = make_baseline_policy(env, args.policy)
-    render_mode = "human" if (args.show and interactive) else "rgb_array"
+    render_mode = "human" if gui else "rgb_array"
     obs, _ = env.reset(seed=args.seed)
     total_reward = 0.0
     steps = 0
@@ -527,7 +535,7 @@ def _cmd_demo(args: argparse.Namespace) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     env.fig.savefig(out, dpi=110)
     print(f"demo: {steps} steps, reward {total_reward:,.2f} -> {out}")
-    if args.show and interactive:
+    if gui:
         plt.show(block=True)
 
 
@@ -539,6 +547,12 @@ def main(argv: list[str] | None = None) -> None:
     """
     parser = _parser()
     args = parser.parse_args(argv)
+    # Switch to an interactive matplotlib backend before any pyplot import
+    # whenever the user asked for live rendering (demo / train --render).
+    if getattr(args, "render", False) or getattr(args, "live", False) or getattr(args, "show", False):
+        from ..envs.render import ensure_gui_backend
+
+        ensure_gui_backend()
     args.func(args)
 
 

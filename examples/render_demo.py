@@ -46,14 +46,24 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    requested_live = args.show or args.live
 
     import matplotlib
 
-    backend = matplotlib.get_backend().lower()
-    gui = any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx"))
-    # Headless-safe default: render into a figure but never open a window.
-    if not (args.show or args.live) and gui:
-        matplotlib.use("Agg", force=True)
+    from llrflibs_rl.envs.render import ensure_gui_backend
+
+    if requested_live:
+        # Try to get an interactive backend (TkAgg -> Qt -> wx) before any
+        # pyplot import.  On truly headless systems this falls back to PNG.
+        gui = ensure_gui_backend()
+        if not gui:
+            print("[demo] warning: no interactive matplotlib backend available; saving a PNG only.")
+    else:
+        # Headless-safe default for non-live runs.
+        backend = matplotlib.get_backend().lower()
+        if any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx")):
+            matplotlib.use("Agg", force=True)
+        gui = False
 
     import matplotlib.pyplot as plt
 
@@ -61,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     from llrflibs_rl.controllers.baselines import make_baseline_policy
     from llrflibs_rl.envs.render import RenderableEnv
 
-    render_mode = "human" if (args.show or args.live) else "rgb_array"
+    render_mode = "human" if gui else "rgb_array"
     env = RenderableEnv(
         rl.make(args.env), render_mode=render_mode, title=f"{args.env} — baseline={args.policy}"
     )
@@ -83,8 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     env.fig.savefig(out, dpi=110)
     print(f"[demo] {steps} steps, reward {total_reward:,.2f} -> {out}")
-    if (args.show or args.live) and gui:
-        plt.show(block=True)
+    if gui:
+        plt.show(block=True)  # keep the window open until the user closes it
     return 0
 
 

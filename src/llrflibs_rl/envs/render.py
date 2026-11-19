@@ -28,7 +28,35 @@ from typing import Any
 
 import numpy as np
 
-__all__ = ["RenderableEnv"]
+__all__ = ["RenderableEnv", "ensure_gui_backend"]
+
+_GUI_TOKENS = ("tk", "qt", "gtk", "wx", "macosx")
+
+
+def ensure_gui_backend() -> bool:
+    """Make sure an interactive matplotlib backend is active.
+
+    Called at the entry points (``render_demo``, the ``demo`` / ``train
+    --render`` CLIs) *before* ``matplotlib.pyplot`` is imported anywhere: if the
+    current backend is headless (e.g. ``Agg`` set by ``MPLBACKEND``) it tries to
+    switch to an interactive one (TkAgg -> QtAgg -> wxAgg).  Returns whether a
+    GUI backend is now active (``False`` on truly headless systems).
+
+    Returns:
+        ``True`` when a GUI backend is usable, ``False`` otherwise.
+    """
+    import matplotlib
+
+    backend = matplotlib.get_backend().lower()
+    if any(token in backend for token in _GUI_TOKENS):
+        return True
+    for candidate in ("TkAgg", "QtAgg", "Qt5Agg", "wxAgg"):
+        try:
+            matplotlib.use(candidate, force=True)
+            return True
+        except Exception:
+            continue
+    return False
 
 
 class RenderableEnv:
