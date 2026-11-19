@@ -93,6 +93,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._last_action = 0.0 + 0.0j
         self._drive_total = 0.0 + 0.0j
         self._step_index = 0
+        self._detuning_history: list[float] = []
         self._init_drive_history()
 
     # ------------------------------------------------------------------
@@ -260,6 +261,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._last_action = 0.0 + 0.0j
         self._drive_total = self._reference.vf_ff_at(0)
         self._step_index = 0
+        self._detuning_history = []
         self._reflect_streak = 0
         if self.env_cfg.quench_detect:
             from ..sensors import QuenchDetector
@@ -292,6 +294,11 @@ class CavityVoltageEnv(BaseLLRFEnv):
         dw = self._current_detuning(idx)
         hbw = self._current_half_bw()
         self._plant.step(drive, beam=beam, detuning=dw, half_bw=hbw)
+        # Record the detuning actually applied this sample (time-varying), so
+        # renderers can show the true detuning trace (mech-style layouts).
+        self._detuning_history.append(
+            float(dw) if dw is not None else float(self._episode_detuning)
+        )
         self._drive_total = drive
         self._step_index += 1
 

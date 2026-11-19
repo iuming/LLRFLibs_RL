@@ -147,7 +147,6 @@ for _ in range(400):
 #### What the four console panels mean
 
 The console view (`layout="console"`, dark EPICS-style) shows:
-
 | panel | what it plots | how to read it |
 |---|---|---|
 | **Amplitude \|Vc\|** (left-top) | cavity voltage magnitude vs time, with the setpoint (dashed) | cyan curve must ride the dashed reference; gap = tracking error |
@@ -158,6 +157,16 @@ The console view (`layout="console"`, dark EPICS-style) shows:
 The **left PV panel** is the numeric readout column (|Vc|, phase, forward,
 reflected, detuning, beam, tracking error, reward) — engineers who are used to
 CSS/Phoebus will recognize it.
+
+The same renderer also offers a mech2-style physics view that is plotted from
+the *reinforcement-learning environment itself* (`--layout mech`) — three
+stacked panels |Vc| (MV) / phase (deg) / detuning (Hz), the latter showing the
+real time-varying (microphonics / Lorentz) detuning:
+
+```bash
+python run.py demo --env CavityVoltage-v0 --policy pi --layout mech --out gallery/mech_rl.png
+D:/Software/Anaconda/envs/rl/python.exe examples/render_demo.py --layout mech --out gallery/mech_rl.png
+```
 
 #### LLRFLibsPy-style physics plots (`mech2` port)
 

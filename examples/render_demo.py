@@ -38,6 +38,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--frame", type=int, default=2, help="render every N-th step")
     parser.add_argument("--fps", type=float, default=30.0, help="refresh rate of the live window")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--layout", type=str, default="console",
+                        choices=["console", "simple", "mech"],
+                        help="renderer layout: console / simple / mech (three-panel physics view)")
     parser.add_argument("--show", action="store_true", help="show a live/interactive window")
     parser.add_argument("--live", action="store_true",
                         help="render in real time, frame by frame (human mode on GUI)")
@@ -88,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         rl.make(args.env), render_mode=render_mode,
         title=f"{args.env} — baseline={args.policy}",
         pause_sec=1.0 / max(1.0, args.fps),
+        layout=args.layout,
         streamer=streamer,
     )
     policy = make_baseline_policy(env, args.policy)

@@ -153,6 +153,10 @@ def _parser() -> argparse.ArgumentParser:
     p_demo.add_argument("--frame", type=int, default=4,
                         help="render every N-th step (keeps headless mode fast)")
     p_demo.add_argument("--seed", type=int, default=0)
+    p_demo.add_argument("--layout", type=str, default="console",
+                        choices=["console", "simple", "mech"],
+                        help="renderer layout: console (EPICS-style), simple (4-panel) "
+                             "or mech (three-panel |Vc|/phase/detuning physics view)")
     p_demo.add_argument("--show", action="store_true",
                         help="show the figure interactively (blocks until closed)")
     p_demo.add_argument("--out", type=str, default=None,
@@ -519,6 +523,7 @@ def _cmd_demo(args: argparse.Namespace) -> None:
     env = RenderableEnv(
         make(args.env), render_mode="human" if gui else "rgb_array",
         title=f"{args.env} — baseline={args.policy}",
+        layout=args.layout,
     )
     policy = make_baseline_policy(env, args.policy)
     render_mode = "human" if gui else "rgb_array"

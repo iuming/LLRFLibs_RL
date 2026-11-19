@@ -132,6 +132,32 @@ def test_simple_layout_still_works(fast_cavity, fast_env_config):
     env.close()
 
 
+def test_mech_layout_renders_time_varying_detuning(fast_cavity, fast_env_config):
+    from dataclasses import replace
+
+    from llrflibs_rl.envs.render import RenderableEnv
+
+    cfg = replace(fast_env_config, microphonics_amp=2.0 * np.pi * 50.0, microphonics_freq=250.0)
+    env = RenderableEnv(
+        rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=cfg),
+        render_mode="rgb_array", layout="mech",
+    )
+    env.reset(seed=0)
+    action = np.array([1.0, 0.0], dtype=np.float32)
+    for _ in range(60):
+        env.step(action)
+    frame = env.render("rgb_array")
+    assert frame.ndim == 3 and frame.dtype == np.uint8
+    # The mech view shows the *time-varying* detuning: microphonics must make
+    # the recorded detuning sweep across the episode.
+    detuning = env._history["detuning"]
+    assert len(detuning) >= 60
+    assert max(detuning) - min(detuning) > 0.0
+    # Units: |Vc| axis is plotted in MV (ready to inspect via data).
+    assert env._lines["amp"].get_ydata().size == len(detuning)
+    env.close()
+
+
 def test_http_streamer_serves_frames():
     import urllib.request
 

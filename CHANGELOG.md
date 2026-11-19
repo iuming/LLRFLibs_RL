@@ -89,6 +89,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   multi-mode mechanical detuning; draws the classic |Vc| / phase / detuning
   three-panel view plus the internal I/Q traces (`--out` headless,
   `--show` interactive).  README documents the four renderer panels.
+- **mech layout for the RL environments** — `RenderableEnv(layout="mech")`
+  renders the same three-panel physics view (|Vc| in MV / phase in deg /
+  detuning in Hz) from a real Gymnasium rollout; the voltage environments now
+  record the *time-varying* detuning actually applied each sample so the
+  detuning panel shows real microphonics / Lorentz dynamics; available through
+  `demo --layout mech` and `examples/render_demo.py --layout mech`.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

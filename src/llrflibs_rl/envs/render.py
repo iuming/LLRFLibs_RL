@@ -17,6 +17,10 @@ Two layouts are provided:
   reflected, detuning, beam, drive, error) on the left, waveform trend strips
   for amplitude / phase tracking, and a phasor view with a *moving* state
   marker (the RF equivalent of a vehicle driving its trajectory);
+* ``"mech"`` — the plain three-panel physics view of
+  ``LLRFLibsPy/example/example_sim_cavity_mech2.py``: |Vc| (MV) / phase (deg) /
+  detuning (Hz) stacked in time, rendered from the *reinforcement-learning
+  environment* rollout;
 * ``"simple"`` — the original 4-panel figure (amplitude / phase / phasor /
   telemetry).
 
@@ -90,7 +94,8 @@ class RenderableEnv:
         env:         The environment to visualize.
         render_mode: ``"human"`` (live figure) or ``"rgb_array"``.
         title:       Optional figure title.
-        layout:      ``"console"`` (default, EPICS-style) or ``"simple"``.
+        layout:      ``"console"`` (default, EPICS-style), ``"mech"``
+                     (three-panel mech2-style physics view) or ``"simple"``.
         max_steps:   Rolling window length shown on the time axes.
         pause_sec:   GUI refresh interval used by ``human`` mode.
         streamer:    Optional :class:`~llrflibs_rl.utils.live_http.HttpStreamer`
@@ -109,8 +114,8 @@ class RenderableEnv:
     ) -> None:
         if render_mode not in ("human", "rgb_array"):
             raise ValueError("render_mode must be 'human' or 'rgb_array'.")
-        if layout not in ("console", "simple"):
-            raise ValueError("layout must be 'console' or 'simple'.")
+        if layout not in ("console", "simple", "mech"):
+            raise ValueError("layout must be 'console', 'simple' or 'mech'.")
         self.env = env
         self.render_mode = render_mode
         self.title = title or (getattr(env, "spec", None) and str(env.spec.env_id)) or "LLRF environment"
@@ -231,7 +236,12 @@ class RenderableEnv:
         reference = complex(sp_arr[min(idx, len(sp_arr) - 1)]) if sp_arr is not None else tracked
         drive = complex(getattr(env, "drive_total", 0.0))
         plant = getattr(env, "plant", None)
-        detuning = float(getattr(plant, "detuning", 0.0) or 0.0)
+        # Prefer the time-varying detuning actually applied each sample.
+        detuning_h = getattr(env, "_detuning_history", None)
+        if detuning_h:
+            detuning = float(detuning_h[-1])
+        else:
+            detuning = float(getattr(plant, "detuning", 0.0) or 0.0)
         refl = float(abs(getattr(plant, "vr", 0.0 + 0.0j)))
         beam_val = 0.0
         if hasattr(env, "_beam_at"):
@@ -275,9 +285,42 @@ class RenderableEnv:
 
         if self.layout == "simple":
             self._build_simple(plt)
+        elif self.layout == "mech":
+            self._build_mech(plt)
         else:
             self._build_console(plt)
         self._raise_window()
+
+    def _build_mech(self, plt) -> None:
+        """The three-panel mech2-style view: |Vc| / phase / detuning in time."""
+        self._fig = plt.figure(figsize=(11, 8), facecolor=_BG)
+        self._fig.suptitle(f"{self.title}   |   step --", color=_FG, fontsize=12, fontweight="bold")
+        grid = self._fig.add_gridspec(3, 1, hspace=0.35, left=0.10, right=0.96, top=0.90, bottom=0.07)
+        ax1 = self._fig.add_subplot(grid[0])
+        ax2 = self._fig.add_subplot(grid[1])
+        ax3 = self._fig.add_subplot(grid[2])
+
+        (self._lines["amp"],) = ax1.plot([], [], lw=1.5, color=_ACCENT)
+        ax1.set_ylabel("|Vc| (MV)", color=_FG, fontsize=10)
+        ax1.set_xlim(0, self.max_steps)
+        ax1.grid(alpha=0.25, color="#30363d")
+
+        (self._lines["phase"],) = ax2.plot([], [], lw=1.5, color=_OK)
+        ax2.set_ylabel("Phase (deg)", color=_FG, fontsize=10)
+        ax2.set_xlim(0, self.max_steps)
+        ax2.grid(alpha=0.25, color="#30363d")
+
+        (self._lines["detuning"],) = ax3.plot([], [], lw=1.5, color=_REF_COLOR)
+        ax3.set_ylabel("Detuning (Hz)", color=_FG, fontsize=10)
+        ax3.set_xlabel("sample", color=_FG, fontsize=9)
+        ax3.set_xlim(0, self.max_steps)
+        ax3.grid(alpha=0.25, color="#30363d")
+
+        for ax in (ax1, ax2, ax3):
+            ax.set_facecolor(_PANEL)
+            ax.tick_params(colors=_FG, labelsize=8)
+            for spine in ax.spines.values():
+                spine.set_color("#30363d")
 
     def _raise_window(self) -> None:
         """Bring the window to the front and flash it to the top.
@@ -484,9 +527,16 @@ class RenderableEnv:
         drive = np.asarray(self._history["drive"], dtype=float)
         refl = np.asarray(self._history["refl"], dtype=float)
 
-        self._lines["amp"].set_data(t, amp)
-        self._lines["phase"].set_data(t, phase)
-        self._lines["drive"].set_data(t, drive)
+        # mech-style physics view uses engineering units (MV / deg / Hz).
+        use_mv = self.layout == "mech"
+        use_deg = self.layout in ("console", "mech")
+        amp_plot = amp / 1e6 if use_mv else amp
+        phase_plot = np.degrees(phase) if use_deg else phase
+
+        self._lines["amp"].set_data(t, amp_plot)
+        self._lines["phase"].set_data(t, phase_plot)
+        if "drive" in self._lines:
+            self._lines["drive"].set_data(t, drive)
         if "refl" in self._lines:
             self._lines["refl"].set_data(t, refl)
         if "detuning" in self._lines:
@@ -499,8 +549,12 @@ class RenderableEnv:
                 axes.autoscale_view()
 
         ref = complex(getattr(self, "_reference", 0.0))
-        self._lines["ref"].set_data(t, np.full_like(t, abs(ref)))
-        self._lines["phref"].set_data(t, np.full_like(t, np.degrees(np.angle(ref))))
+        if "ref" in self._lines:
+            self._lines["ref"].set_data(t, np.full_like(t, abs(ref)) if not use_mv else np.full_like(t, abs(ref) / 1e6))
+        if "phref" in self._lines:
+            self._lines["phref"].set_data(
+                t, np.full_like(t, np.degrees(np.angle(ref)) if use_deg else np.angle(ref))
+            )
 
         if "lis" in self._lines and len(t) > 1:
             # Trajectory + moving state marker (the "vehicle").
@@ -514,7 +568,7 @@ class RenderableEnv:
         self._update_console_pvs()
         total = int(getattr(self.env, "episode_len", 0) or (int(t[-1]) + 1 if len(t) else 1))
         step_txt = f"step {int(t[-1]) + 1:d}/{total}" if len(t) else "step --"
-        title_color = _FG if self.layout == "console" else "#000000"
+        title_color = _FG if self.layout in ("console", "mech") else "#000000"
         self._fig.suptitle(f"{self.title}   |   {step_txt}", color=title_color)
         self._fig.canvas.draw_idle()
         self._push_frame()
