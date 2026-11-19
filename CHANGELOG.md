@@ -75,6 +75,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   error with alarm colours), waveform trend strips, and a *moving* state
   marker that drives the phasor trajectory; the old 4-panel layout is kept as
   `layout="simple"`.
+- **Nominal SC-cavity preset aligned with LLRFLibsPy** — `nominal_sc_cavity`
+  now uses the canonical half bandwidth ``half_bw = pi * f0 / QL`` (1.3 GHz,
+  QL = 3e6 -> ~216.7 Hz; previously half of it) and a mild static detuning of
+  100 Hz (was 500 Hz), exactly like ``example/example_sp_ff.py``.  The
+  constant-filling feedforward now stays comfortably within the drive budget
+  and the zero-disturbance, zero-residual flattop tracking error drops from
+  ~0.28 % to ~0.03 %.  `nominal_nc_cavity` gets the same canonical
+  bandwidth fix.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

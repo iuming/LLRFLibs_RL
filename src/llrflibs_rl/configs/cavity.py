@@ -116,7 +116,7 @@ def _default_mech_modes() -> dict[str, list[float]]:
 
 def nominal_sc_cavity(
     vc_target: float = 25e6,
-    detuning: float = 2.0 * np.pi * 500.0,
+    detuning: float = 2.0 * np.pi * 100.0,
     beam_current: float = 8e-3,
     beam_phase_deg: float = 0.0,
     filling_len: int = 510,
@@ -125,10 +125,11 @@ def nominal_sc_cavity(
 ) -> CavityParams:
     """Build a nominal superconducting (SC) linac cavity preset.
 
-    The static detuning is chosen at 500 Hz so that the analytical feedforward
-    stays within a physically reachable drive budget (about 2.5x the cavity
-    voltage), which keeps the voltage setpoint reachable under saturation
-    limits.
+    The cavity is the canonical 1.3 GHz / QL = 3e6 example of
+    ``LLRFLibsPy`` (``example/example_sp_ff.py``): the half bandwidth is the
+    LLRF convention ``half_bw = pi * f0 / QL`` (~216.7 Hz) and the static
+    detuning is a mild 100 Hz, which keeps the constant-filling feedforward
+    comfortably inside the drive budget.
 
     Args:
         vc_target:      Desired flattop cavity voltage, V.
@@ -144,7 +145,7 @@ def nominal_sc_cavity(
     """
     modes: dict[str, list[float]] | None = _default_mech_modes() if with_mech_modes else None
     return CavityParams(
-        half_bw=2.0 * np.pi * 216.0 * 0.5,
+        half_bw=np.pi * 1.3e9 / 3e6,
         vc_target=vc_target,
         detuning=detuning,
         beta=1e4,
@@ -181,7 +182,7 @@ def nominal_nc_cavity(
         A configured :class:`CavityParams`.
     """
     return CavityParams(
-        half_bw=2.0 * np.pi * 216.0 * 0.5,
+        half_bw=np.pi * 1.3e9 / 1e5,
         vc_target=vc_target,
         detuning=detuning,
         beta=1.0,
