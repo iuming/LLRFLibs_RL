@@ -165,6 +165,8 @@ python -m llrflibs_rl.scripts.run train --env DualLoop-v0 --runs-dir runs
 
 Each `train`/`benchmark` writes a self-contained artifact directory under
 `runs/` (config, metrics, model, training curve, comparison figure).
+Every benchmark artifact is also indexed in
+[`benchmarks/README.md`](../benchmarks/README.md).
 
 ## 7. Caveats
 
