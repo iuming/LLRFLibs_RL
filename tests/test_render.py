@@ -1,0 +1,54 @@
+###################################################################################
+#  Copyright (c) 2026 by National Synchrotron Radiation Laboratory, University of Science and Technology of China
+#  All rights reserved.
+#  Authors: Ming Liu, mliu1018@ustc.edu.cn
+###################################################################################
+"""
+Tests for the CartPole-style visualization wrapper (RenderableEnv).
+"""
+
+from __future__ import annotations
+
+import matplotlib
+
+matplotlib.use("Agg")  # headless CI backend; must precede any pyplot use
+
+import numpy as np
+
+import llrflibs_rl as rl
+
+
+def _env(fast_cavity, fast_env_config):
+    from llrflibs_rl.envs.render import RenderableEnv
+
+    return RenderableEnv(
+        rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config),
+        render_mode="rgb_array",
+    )
+
+
+def test_renderable_env_rgb_array(fast_cavity, fast_env_config):
+    from llrflibs_rl.controllers.baselines import zero_policy
+
+    env = _env(fast_cavity, fast_env_config)
+    policy = zero_policy(env)
+    env.reset(seed=0)
+    for _ in range(40):
+        env.step(policy(np.zeros(2, dtype=np.float32)))
+    frame = env.render("rgb_array")
+    assert isinstance(frame, np.ndarray)
+    assert frame.ndim == 3 and frame.shape[2] == 3
+    assert frame.dtype == np.uint8 and frame.size > 0
+    env.close()
+
+
+def test_renderable_env_human_and_attribute_forwarding(fast_cavity, fast_env_config):
+    env = _env(fast_cavity, fast_env_config)
+    env.reset(seed=0)
+    env.step(np.zeros(2, dtype=np.float32))
+    assert env.render("human") is None
+    # Unknown attributes are forwarded to the wrapped environment.
+    assert hasattr(env, "tracked_signal")
+    assert np.isfinite(abs(complex(env.tracked_signal)))
+    assert env.spec is not None
+    env.close()

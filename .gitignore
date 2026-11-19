@@ -12,6 +12,7 @@ htmlcov/
 # training artifacts
 runs/
 models/
+gallery/
 *.zip
 
 # notebooks / OS

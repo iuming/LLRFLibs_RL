@@ -53,6 +53,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     (beam phase keep-up feedforward).
   - `plants/measurement` — firmware-style `decimation` in `MeasurementChain`.
   - `diag` CLI — open-loop identification + loop-margin diagnostics.
+- **Visualization** — `envs.render.RenderableEnv`: a CartPole-style render
+  wrapper for the LLRF environments with ``render("human")`` / ``render("rgb_array")``
+  modes (live multi-panel figure: amplitude / phase tracking, I/Q phasor and
+  drive/detuning telemetry); `demo` CLI runs an episode with any baseline and
+  saves a PNG (interactive ``--show`` on GUI terminals).
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

@@ -137,6 +137,19 @@ def _parser() -> argparse.ArgumentParser:
     p_diag = sub.add_parser("diag", help="open-loop diagnostics: identified params + loop margins")
     p_diag.add_argument("--env", type=str, default="CavityVoltage-v0")
     p_diag.set_defaults(func=_cmd_diag)
+
+    p_demo = sub.add_parser("demo", help="run a CartPole-style visualization of an environment")
+    p_demo.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_demo.add_argument("--policy", type=str, default="zero", choices=list_baselines())
+    p_demo.add_argument("--steps", type=int, default=400)
+    p_demo.add_argument("--frame", type=int, default=4,
+                        help="render every N-th step (keeps headless mode fast)")
+    p_demo.add_argument("--seed", type=int, default=0)
+    p_demo.add_argument("--show", action="store_true",
+                        help="show the figure interactively (blocks until closed)")
+    p_demo.add_argument("--out", type=str, default=None,
+                        help="PNG path of the rendered episode (default gallery/demo_<env>.png)")
+    p_demo.set_defaults(func=_cmd_demo)
     return parser
 
 
@@ -468,6 +481,41 @@ def _cmd_diag(args: argparse.Namespace) -> None:
     )
     print(f"identified detuning       : {report.detuning_identified:,.4e} rad/s (err {report.detuning_rel_error:.2%})")
     print(f"loop S_max / T_max        : {margins.s_max_db:.2f} / {margins.t_max_db:.2f} dB")
+
+
+def _cmd_demo(args: argparse.Namespace) -> None:
+    import matplotlib
+
+    backend = matplotlib.get_backend().lower()
+    interactive = any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx"))
+    if not args.show and interactive:
+        matplotlib.use("Agg", force=True)  # headless default for CI / scripts
+
+    import matplotlib.pyplot as plt
+
+    from ..controllers.baselines import make_baseline_policy
+    from ..envs.render import RenderableEnv
+
+    env = RenderableEnv(make(args.env), render_mode="rgb_array", title=f"{args.env} — baseline={args.policy}")
+    policy = make_baseline_policy(env, args.policy)
+    obs, _ = env.reset(seed=args.seed)
+    total_reward = 0.0
+    steps = 0
+    for i in range(args.steps):
+        obs, reward, terminated, truncated, _info = env.step(policy(obs))
+        total_reward += float(reward)
+        steps += 1
+        if i % max(1, args.frame) == 0 or terminated or truncated:
+            env.render("rgb_array")
+        if terminated or truncated:
+            break
+
+    out = Path(args.out) if args.out else Path("gallery") / f"demo_{args.env}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    env.fig.savefig(out, dpi=110)
+    print(f"demo: {steps} steps, reward {total_reward:,.2f} -> {out}")
+    if args.show and interactive:
+        plt.show(block=True)
 
 
 def main(argv: list[str] | None = None) -> None:

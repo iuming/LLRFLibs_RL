@@ -107,6 +107,34 @@ python examples/train_and_eval.py --env VectorSum-v0  --timesteps 60000
 python examples/train_and_eval.py --env CavityVoltage-v0
 ```
 
+### Demo (visualization)
+
+A CartPole-style renderer is available on any registered environment. Watch
+the episode live (GUI terminal) or write a PNG on headless machines:
+
+```bash
+# save a figure (any policy: zero / ff / pi / adrc)
+python -m llrflibs_rl.scripts.run demo --env CavityVoltage-v0 --policy pi --out gallery/demo.png
+
+# interactive window on a GUI terminal
+python -m llrflibs_rl.scripts.run demo --env DualLoop-v0 --policy pi --show
+```
+
+In Python, wrap any environment with the renderer:
+
+```python
+from llrflibs_rl.envs.render import RenderableEnv
+import llrflibs_rl as rl
+
+env = RenderableEnv(rl.make("CavityVoltage-v0"), render_mode="human")
+obs, _ = env.reset(seed=0)
+for _ in range(400):
+    obs, _, terminated, truncated, _ = env.step(env.action_space.sample())
+    env.render()
+    if terminated or truncated:
+        break
+```
+
 ## Classical baselines
 
 Every training run compares RL against a classical controller selected with

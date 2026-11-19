@@ -16,6 +16,7 @@ from .. import registry as _registry
 from .core import BaseLLRFEnv
 from .gain_scheduling import GainSchedulingEnv
 from .pulse_to_pulse import AdaptivePulseEnv, BeamLoadingEnv
+from .render import RenderableEnv
 from .resonance import DualLoopEnv, FrequencyEnv
 from .vectormodule import VectorSumEnv
 from .voltage import ADRCAssistEnv, CavityVoltageEnv, PIAssistEnv
@@ -131,5 +132,6 @@ __all__ = [
     "FrequencyEnv",
     "GainSchedulingEnv",
     "PIAssistEnv",
+    "RenderableEnv",
     "VectorSumEnv",
 ]
