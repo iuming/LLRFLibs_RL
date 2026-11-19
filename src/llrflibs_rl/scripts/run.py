@@ -121,6 +121,22 @@ def _parser() -> argparse.ArgumentParser:
     p_spec.add_argument("--bands", type=str, default=None,
                         help="comma-separated f1-f2 bands for band RMS (e.g. '20-100,100-500')")
     p_spec.set_defaults(func=_cmd_spectrum)
+
+    p_tune = sub.add_parser("tune", help="GP/Bayesian auto-tune of the PI residual gain")
+    p_tune.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_tune.add_argument("--n-iters", type=int, default=14)
+    p_tune.add_argument("--seed", type=int, default=0)
+    p_tune.set_defaults(func=_cmd_tune)
+
+    p_kpi = sub.add_parser("kpi", help="KPI pass/fail report of a baseline policy")
+    p_kpi.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_kpi.add_argument("--baseline", type=str, default="zero", choices=list_baselines())
+    p_kpi.add_argument("--seed", type=int, default=0)
+    p_kpi.set_defaults(func=_cmd_kpi)
+
+    p_diag = sub.add_parser("diag", help="open-loop diagnostics: identified params + loop margins")
+    p_diag.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_diag.set_defaults(func=_cmd_diag)
     return parser
 
 
@@ -391,6 +407,67 @@ def _cmd_spectrum(args: argparse.Namespace) -> None:
     print(f"overall error RMS  : {report.error_rms:.4e}")
     for band in report.bands:
         print(f"band {band.f_start:>8.1f}-{band.f_end:<8.1f} Hz : {band.rms:.4e}")
+
+
+def _cmd_tune(args: argparse.Namespace) -> None:
+    from dataclasses import replace
+
+    from ..agents.optimizers import tune_scalar
+    from ..controllers.baselines import make_pi_residual_policy
+    from ..evaluation import evaluate_episode
+
+    base = make(args.env).env_cfg
+
+    def objective(kp: float) -> float:
+        env = make(args.env, env_cfg=replace(
+            base, randomize_detuning=0.0, microphonics_amp=0.0,
+            measurement_noise_std=0.0, loop_delay_steps=0,
+        ))
+        policy = make_pi_residual_policy(env, kp=float(kp), ki=2.0e5)
+        return float(evaluate_episode(env, policy, seed=0)["reward"])
+
+    best, history = tune_scalar(objective, (0.01, 3.0), n_init=4, n_iters=args.n_iters, seed=args.seed)
+    print_header(f"GP/Bayesian tuning of the PI residual gain ({args.env})")
+    print(f"best kp        : {best:.4f}")
+    print(f"best reward    : {max(history):,.2f}")
+    print(f"reward history : {[f'{h:,.0f}' for h in history]}")
+
+
+def _cmd_kpi(args: argparse.Namespace) -> None:
+    from ..controllers.baselines import make_baseline_policy
+    from ..evaluation.kpis import KPIS, kpi_report
+
+    env = make(args.env)
+    policy = make_baseline_policy(env, args.baseline)
+    report = kpi_report(env, policy, seed=args.seed)
+    print_header(f"KPI report (baseline={args.baseline})")
+    print(f"{'KPI':<26}{'value':>14}{'threshold':>12}{'pass':>8}")
+    for key, item in report.items():
+        kpi = KPIS[key]
+        passed = "PASS" if item["passed"] else "FAIL"
+        print(f"{kpi.name:<26}{item['value']:>14.4f}{kpi.threshold:>12.4f}{passed:>8}")
+
+
+def _cmd_diag(args: argparse.Namespace) -> None:
+    from ..configs.controller import PIControllerConfig
+    from ..evaluation.loop import cavity_plant_abcd, loop_margins, pi_controller_abcd
+    from ..plants.sysid import identify_cavity
+
+    env = make(args.env)
+    report = identify_cavity(env.cavity, env.env_cfg.Ts, n_prbs=2048)
+    plant = cavity_plant_abcd(env.cavity)
+    pi_cfg = PIControllerConfig()
+    margins = loop_margins(
+        plant, pi_controller_abcd(pi_cfg.kp, pi_cfg.ki, notch_conf=pi_cfg.notch_conf), Ts=None, plot_maxf=2.0e6
+    )
+    print_header("Open-loop diagnostics (simulated plant)")
+    print(
+        "identified half bandwidth : "
+        f"{report.half_bw_identified:,.4e} rad/s (true {report.half_bw_truth:,.4e}, "
+        f"err {report.half_bw_rel_error:.2%})"
+    )
+    print(f"identified detuning       : {report.detuning_identified:,.4e} rad/s (err {report.detuning_rel_error:.2%})")
+    print(f"loop S_max / T_max        : {margins.s_max_db:.2f} / {margins.t_max_db:.2f} dB")
 
 
 def main(argv: list[str] | None = None) -> None:

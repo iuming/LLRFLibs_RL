@@ -138,34 +138,46 @@ def detect_pulse(wave: np.ndarray, threshold: float = 0.1) -> dict[str, object]:
 
 @dataclass
 class MeasurementChain:
-    """Configurable detector chain: delay + additive noise.
+    """Configurable detector chain: delay + additive noise + decimation.
 
     Attributes:
         delay_steps: Transport delay of the measurement, samples.
         noise_std:   Additive I/Q noise standard deviation (same units as the
                      signal).
         seed:        Random seed for reproducible noise.
+        decimation:  Firmware-style decimation factor (> 1 averages groups of
+                     samples, mirroring the decimated control loops of real
+                     LLRF FPGAs).  The output length is preserved (hold).
     """
 
     delay_steps: int = 1
     noise_std: float = 0.0
     seed: int = 0
+    decimation: int = 1
 
     def process_wave(self, wave: np.ndarray) -> np.ndarray:
-        """Apply delay and noise to a complex I/Q waveform.
+        """Apply decimation, delay and noise to a complex I/Q waveform.
 
         Args:
             wave: Input complex waveform.
 
         Returns:
-            Delayed, noisy waveform (same length; leading samples zero-filled).
+            Processed waveform (same length as the input).
         """
         wave = np.asarray(wave, dtype=np.complex128)
         out = np.zeros_like(wave)
-        if self.delay_steps > 0:
-            out[self.delay_steps:] = wave[:-self.delay_steps]
+        if self.decimation > 1:
+            d = int(self.decimation)
+            m = wave.shape[0] // d * d
+            if m >= d:
+                decimated = wave[:m].reshape(-1, d).mean(axis=1)
+                out[:m] = np.repeat(decimated, d)
         else:
             out[:] = wave
+        if self.delay_steps > 0:
+            delayed = np.roll(out, self.delay_steps)
+            delayed[: self.delay_steps] = 0.0
+            out = delayed
         if self.noise_std > 0.0:
             rng = np.random.default_rng(self.seed)
             real_noise = rng.normal(0.0, self.noise_std, wave.shape)

@@ -5,6 +5,7 @@
 ###################################################################################
 """Agent layer: training wrappers and per-task presets."""
 
+from .optimizers import BayesianOptimizer, GaussianProcess, tune_scalar
 from .presets import agent_config_for
 from .trainer import (
     AgentConfig,
@@ -18,6 +19,8 @@ from .trainer import (
 
 __all__ = [
     "AgentConfig",
+    "BayesianOptimizer",
+    "GaussianProcess",
     "agent_config_for",
     "make_training_vec_env",
     "make_vector_env",
@@ -25,4 +28,5 @@ __all__ = [
     "train_ppo",
     "train_sac",
     "train_td3",
+    "tune_scalar",
 ]

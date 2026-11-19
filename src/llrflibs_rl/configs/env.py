@@ -63,6 +63,12 @@ class EnvConfig:
         half_bw_drift_frac:        Relative linear drift of the cavity half
                      bandwidth across the episode (robustness test); uses the
                      time-varying plant path.
+        quench_detect:             Enable the reflected-amplitude quench-onset
+                     detector (fires the protective trip early).
+        quench_rate_threshold:     Reflected-amplitude growth rate that triggers
+                     the quench detector, V/s.
+        quench_abs_threshold:      Optional absolute reflected level floor of the
+                     quench detector, V.
         seed:                    Base random seed (the np_random is derived from it).
     """
 
@@ -80,6 +86,9 @@ class EnvConfig:
     reflected_power_trip_steps: int = 10
     trip_penalty: float = 0.0
     half_bw_drift_frac: float = 0.0
+    quench_detect: bool = False
+    quench_rate_threshold: float = 1.0e6
+    quench_abs_threshold: float | None = None
     seed: int = 0
     microphonics_psd: MicrophonicsProfile | None = None
 

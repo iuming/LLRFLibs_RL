@@ -39,6 +39,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     of a cavity + PI loop (`loop` CLI).
   - `evaluation/spectral` — tracking-error PSD and band-RMS analysis
     (`spectrum` CLI).
+- **Survey-driven features** (benchmarking/classical baselines and deployment):
+  - `agents/optimizers` — dependency-free Gaussian-process Bayesian optimizer
+    (RBF + UCB) for scalar setpoint / gain auto-tuning, the classical-optimization
+    counterpart to RL; `tune` CLI demos PI-gain auto-tuning on an environment.
+  - `utils/hil` — channel layer (`Channel` / `SimulatedChannel` / optional
+    `EPICSChannel` via `pyepics`) plus `emulate_policy_loop` policy deployment.
+  - `sensors/quench` — reflected-amplitude quench-onset detector wired into the
+    voltage environments through `EnvConfig.quench_detect`.
+  - `evaluation/kpis` — KPI catalog (0.01 % amplitude RMS / 0.01 deg phase RMS)
+    with pass/fail `kpi_report`; `kpi` CLI.
+  - `controllers/feedforward` — `beam_keepup_correction` / `AnalyticBeamFeedforward`
+    (beam phase keep-up feedforward).
+  - `plants/measurement` — firmware-style `decimation` in `MeasurementChain`.
+  - `diag` CLI — open-loop identification + loop-margin diagnostics.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

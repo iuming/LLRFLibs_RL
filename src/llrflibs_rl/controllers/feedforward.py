@@ -18,7 +18,58 @@ import numpy as np
 
 from ..tasks.reference import PulseReference
 
-__all__ = ["AnalyticFeedforward", "PTypeILC"]
+__all__ = ["AnalyticFeedforward", "AnalyticBeamFeedforward", "PTypeILC", "beam_keepup_correction"]
+
+
+def beam_keepup_correction(beam: complex, beta: float = 1e4) -> complex:
+    """Extra drive needed to keep the cavity voltage constant under beam.
+
+    Derived from the steady-state cavity equation
+    ``0 = b0*vf + b1*beam - (half_bw - j*dw)*vc`` with ``b0 = 2*beta*
+    half_bw/(beta+1)`` and ``b1 = 2*half_bw``: the beam-induced drive deficit
+    is ``-b1/b0 * beam = -(beta+1)/beta * beam``.
+
+    Args:
+        beam: Beam-drive complex amplitude, V.
+        beta: Input coupling factor.
+
+    Returns:
+        Complex drive correction (V) to add to the nominal feedforward.
+    """
+    return -((float(beta) + 1.0) / float(beta)) * complex(beam)
+
+
+class AnalyticBeamFeedforward:
+    """Nominal feedforward plus an analytic beam phase-keep-up correction.
+
+    Combines the reference's nominal feedforward waveform with the beam
+    keep-up term :func:`beam_keepup_correction`, so the closed loop does not
+    have to spend its feedback authority on the (known) beam loading.
+
+    Args:
+        reference: Pulse reference owning the nominal feedforward waveform.
+        beta:      Input coupling factor (``1e4`` for SC cavities).
+    """
+
+    def __init__(self, reference: PulseReference, beta: float = 1e4) -> None:
+        self.reference = reference
+        self.beta = float(beta)
+
+    def drive_at(self, step_index: int, beam: complex | None = None) -> complex:
+        """Return the total feedforward (nominal + beam keep-up) at a sample.
+
+        Args:
+            step_index: Sample index.
+            beam:       Current beam drive (complex); the nominal reference
+                        beam is used when omitted.
+
+        Returns:
+            Total feedforward drive, V.
+        """
+        nominal = self.reference.vf_ff_at(step_index)
+        if beam is None:
+            beam = self.reference.vb_at(step_index)
+        return complex(nominal) + beam_keepup_correction(complex(beam), self.beta)
 
 
 class AnalyticFeedforward:

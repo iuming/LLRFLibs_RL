@@ -152,6 +152,10 @@ class CavityVoltageEnv(BaseLLRFEnv):
 
     def _check_reflect_trip(self, reflected: complex) -> bool:
         """Update the reflected-power streak; return True when the trip fires."""
+        if getattr(self, "_quench", None) is not None:
+            if self._quench.update(abs(reflected)):
+                self._reflect_streak = int(self.env_cfg.reflected_power_trip_steps)
+                return True
         limit = self.env_cfg.reflected_power_limit
         if limit is None:
             self._reflect_streak = 0
@@ -257,6 +261,17 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._drive_total = self._reference.vf_ff_at(0)
         self._step_index = 0
         self._reflect_streak = 0
+        if self.env_cfg.quench_detect:
+            from ..sensors import QuenchDetector
+
+            self._quench = QuenchDetector(
+                window=8,
+                rate_threshold=self.env_cfg.quench_rate_threshold,
+                abs_threshold=self.env_cfg.quench_abs_threshold,
+                dt=self.env_cfg.Ts,
+            )
+        else:
+            self._quench = None
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
