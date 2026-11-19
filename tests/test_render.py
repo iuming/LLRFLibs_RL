@@ -86,14 +86,13 @@ def test_live_render_callback_triggers_periodically(fast_cavity, fast_env_config
     callback = LiveRenderCallback(factory, render_freq=4, render_steps=5, pause_sec=0.0)
     callback.init_callback(_FakeModel())
     assert callback.rendered_count() == 0
-    for _ in range(3):
-        callback.on_step()
-    assert callback.rendered_count() == 0  # not yet due
-    callback.on_step()  # 4th training step -> live render fires
+    callback.on_step()  # first training step -> the persistent window opens
     assert callback.rendered_count() == 1
-    for _ in range(4):
+    for _ in range(3):  # steps 2..4; refresh again at step 4 (4 %% 4 == 0)
         callback.on_step()
     assert callback.rendered_count() == 2
+    callback._on_training_end()  # closes the persistent window, no error
+    assert callback._render_env is None
 
 
 def test_console_layout_renders_and_marker_moves(fast_cavity, fast_env_config):
