@@ -64,6 +64,21 @@ class LLRFLoopEnv(DualLoopEnv):
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
         self.drive_limit = float(env_cfg.drive_limit_ratio * self.obs_scale)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32)
+        # Rebuild the reward factory: the DualLoop base hard-codes
+        # ``drive_limit=1.0`` (it has no residual channel), which would normalize
+        # the RF residual by 1 V and explode the reward.  Use the actual residual
+        # scale so ``residual_norm = |residual| / drive_limit <= 1``.
+        from ..tasks.rewards import RewardFactory
+
+        self.reward = RewardFactory(
+            reward_cfg,
+            obs_scale=self.obs_scale,
+            filling_len=cavity.filling_len,
+            flattop_len=cavity.flattop_len,
+            drive_limit=self.drive_limit,
+            drive_effort_scale=max(self._reference.peak_drive, self.obs_scale, 1.0),
+            drive_effort_reference=getattr(env_cfg, "drive_effort_reference", "ff"),
+        )
         self._drive_rl = 0.0 + 0.0j
         self._detuning_history: list[float] = []
 

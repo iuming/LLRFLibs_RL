@@ -208,7 +208,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         seed=seed,
         quick=args.quick,
         runs_dir=Path(args.runs_dir) if args.runs_dir else None,
-        render=args.render,
+        render=bool(args.render or args.render_http >= 0),
         render_freq=args.render_freq,
         render_steps=args.render_steps,
         render_http=args.render_http,
@@ -556,8 +556,13 @@ def main(argv: list[str] | None = None) -> None:
     parser = _parser()
     args = parser.parse_args(argv)
     # Switch to an interactive matplotlib backend before any pyplot import
-    # whenever the user asked for live rendering (demo / train --render).
-    if getattr(args, "render", False) or getattr(args, "live", False) or getattr(args, "show", False):
+    # whenever the user asked for live rendering (demo / train --render / --render-http).
+    if (
+        getattr(args, "render", False)
+        or getattr(args, "live", False)
+        or getattr(args, "show", False)
+        or getattr(args, "render_http", -1) >= 0
+    ):
         from ..envs.render import ensure_gui_backend
 
         ensure_gui_backend()

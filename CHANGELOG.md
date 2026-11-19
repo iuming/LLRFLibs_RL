@@ -104,6 +104,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   residual.  A two-channel classical baseline (error-PI on the RF + detuning-PI
   on the tuner) is provided, and the inner-loop / tuner-only / multi-cavity
   environments map onto the same diagram.
+- **Fixes on the full-loop environment** — the RF residual is normalized by its
+  own scale in the reward (the inherited dual-loop factory used 1 V, which
+  exploded the reward to ~1e11 for any RF action; now bounded ~1).  `--render-http`
+  now also enables rendering (previously `--render` was required), so
+  `train --render-http PORT` opens the browser live view by itself.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

@@ -98,3 +98,18 @@ def test_pi_baseline_runs_on_the_loop_env(fast_cavity):
         if term or trunc:
             break
     assert env.actuator.state == env.actuator.state  # ran without crashing
+
+
+def test_reward_is_bounded_for_extreme_actions(fast_cavity):
+    """Regression: the RF residual must be normalized by its own scale, not 1 V.
+
+    With the dual-loop base reward the residual was normalized by 1 V, which
+    made any RF action explode the reward (~1e11 per step).  The loop env
+    rebuilds the reward factory with the real residual scale.
+    """
+    env = _make(fast_cavity)
+    env.reset(seed=0)
+    for _ in range(300):
+        _o, reward, _term, _trunc, _info = env.step(np.array([1.0, 1.0, 1.0], dtype=np.float32))
+        assert reward > -1.0e6, f"reward must stay bounded, got {reward}"
+    env.close()
