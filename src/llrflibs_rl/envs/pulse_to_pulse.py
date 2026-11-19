@@ -204,6 +204,7 @@ class AdaptivePulseEnv(gym.Env):
     """
 
     metadata = {"render_modes": []}
+    reward_range = (-float("inf"), float("inf"))
 
     def __init__(self, config: AdaptivePulseConfig) -> None:
         super().__init__()
@@ -306,6 +307,17 @@ class AdaptivePulseEnv(gym.Env):
             "mean_err": mean_err,
             "proj": proj,
         }
+
+    # ------------------------------------------------------------------
+    @property
+    def spec(self):
+        """The registry :class:`EnvSpec` attached by ``llrflibs_rl.make``."""
+        return getattr(self, "_spec", None)
+
+    @property
+    def unwrapped(self):
+        """The base (unwrapped) environment."""
+        return self
 
     # ------------------------------------------------------------------
     # Gymnasium API

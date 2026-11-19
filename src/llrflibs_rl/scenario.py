@@ -155,12 +155,16 @@ def run_experiment(
     env_factory = lambda: make(env_id)  # noqa: E731
     baseline_policy = make_baseline_policy(make(env_id), baseline)
 
+    # Persist artifacts (created before training so the SB3 best model and
+    # periodic checkpoints land in the run directory).
+    artifacts = RunArtifacts(run_name=f"{spec.env_id}-{cfg.algorithm}", runs_dir=runs_dir)
+
     # Baseline: deterministic rollout on the first seed (for figures) plus a
     # multi-seed mean (for honest comparison under random disturbances).
     baseline_metrics = evaluate_episode(make(env_id), baseline_policy, seed=seeds[0])
     baseline_robust = evaluate_over_seeds(env_factory, baseline_policy, seeds)
 
-    # Training with an evaluation curve.
+    # Training with an evaluation curve, best-model saving and checkpoints.
     curve: List[Dict[str, float]] = []
     model = train(
         env_factory,
@@ -169,13 +173,12 @@ def run_experiment(
         eval_freq=max(1024, cfg.timesteps // 10),
         eval_seed=seeds[0],
         curve=curve,
+        best_model_dir=artifacts.dir,
     )
     rl_policy = action_from_model(model)
     rl_metrics = evaluate_episode(make(env_id), rl_policy, seed=seeds[0])
     robust = evaluate_over_seeds(env_factory, rl_policy, seeds)
 
-    # Persist artifacts.
-    artifacts = RunArtifacts(run_name=f"{spec.env_id}-{cfg.algorithm}", runs_dir=runs_dir)
     artifacts.save_config({
         "env_id": env_id,
         "baseline": baseline,

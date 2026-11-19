@@ -5,11 +5,17 @@
 ###################################################################################
 """Evaluation layer: physics-aware metrics and report generation."""
 
-from .metrics import action_from_model, evaluate_episode, evaluate_over_seeds
+from .metrics import (
+    action_from_model,
+    cross_check_with_sb3,
+    evaluate_episode,
+    evaluate_over_seeds,
+)
 from .reporting import write_markdown_table, write_results_json
 
 __all__ = [
     "action_from_model",
+    "cross_check_with_sb3",
     "evaluate_episode",
     "evaluate_over_seeds",
     "write_markdown_table",

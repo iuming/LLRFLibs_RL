@@ -19,7 +19,7 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-__all__ = ["evaluate_episode", "evaluate_over_seeds", "action_from_model"]
+__all__ = ["evaluate_episode", "evaluate_over_seeds", "action_from_model", "cross_check_with_sb3"]
 
 
 def _wave(env, name: str) -> Optional[np.ndarray]:
@@ -112,6 +112,46 @@ def action_from_model(model, deterministic: bool = True):
         return np.asarray(action, dtype=np.float32)
 
     return _policy
+
+
+def cross_check_with_sb3(
+    model,
+    env_factory: Callable,
+    n_eval_episodes: int = 3,
+    rel_tolerance: float = 0.05,
+) -> Dict[str, object]:
+    """Cross-check our evaluation metrics against ``stable_baselines3``.
+
+    Runs the package evaluation on one seed and SB3's ``evaluate_policy`` on
+    the same environment; reports mean rewards and whether they agree within
+    a relative tolerance (a sanity check that the metrics pipeline itself is
+    consistent). Models trained with observation normalization are skipped
+    (the cross-check uses the raw environment).
+
+    Args:
+        model:            Trained SB3 model.
+        env_factory:      Environment factory.
+        n_eval_episodes:  Number of SB3 evaluation episodes.
+        rel_tolerance:    Allowed relative difference between the two means.
+
+    Returns:
+        Dict with ``ours``, ``sb3``, ``ok`` and (for normalized models)
+        ``skipped``.
+    """
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.common.vec_env import VecNormalize
+
+    if isinstance(getattr(model, "env", None), VecNormalize):
+        return {"ours": None, "sb3": None, "ok": None, "skipped": True}
+
+    env = env_factory()
+    ours = evaluate_episode(env_factory(), action_from_model(model), seed=7)["reward"]
+    sb3_mean, sb3_std = evaluate_policy(
+        model, env, n_eval_episodes=n_eval_episodes, deterministic=True, warn=False
+    )
+    scale = max(abs(sb3_mean), 1e-6)
+    ok = abs(ours - sb3_mean) <= rel_tolerance * scale
+    return {"ours": float(ours), "sb3": float(sb3_mean), "sb3_std": float(sb3_std), "ok": bool(ok)}
 
 
 def evaluate_over_seeds(

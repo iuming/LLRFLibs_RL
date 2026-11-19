@@ -14,7 +14,7 @@ in :mod:`llrflibs_rl.agents.presets`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 __all__ = ["AgentConfig"]
 
@@ -24,7 +24,7 @@ class AgentConfig:
     """RL algorithm and training configuration.
 
     Attributes:
-        algorithm:     ``"ppo"`` or ``"sac"``.
+        algorithm:     ``"ppo"`` / ``"sac"`` / ``"td3"``.
         timesteps:     Total training timesteps.
         seed:          Global random seed.
         n_steps:       PPO rollout steps per update (PPO only).
@@ -37,6 +37,10 @@ class AgentConfig:
         normalize_obs:  Wrap the training environment in ``VecNormalize``
                      (observation normalization; reward normalization kept off
                      so reported rewards stay physical).
+        n_envs:         Number of parallel train environments (DummyVecEnv).
+        policy:         SB3 policy class name (``"MlpPolicy"`` or
+                     ``"MlpLstmPolicy"`` with the ``recurrent`` extra).
+        policy_kwargs:  Extra keyword arguments for the policy network.
         verbose:       SB3 verbosity level (0 quiet, 1 tables).
         model_name:    Optional name used for the saved model.
     """
@@ -52,6 +56,9 @@ class AgentConfig:
     train_freq: int = 1
     gradient_steps: int = 1
     normalize_obs: bool = False
+    n_envs: int = 1
+    policy: str = "MlpPolicy"
+    policy_kwargs: Optional[Dict[str, object]] = None
     verbose: int = 0
     model_name: Optional[str] = None
 
@@ -65,12 +72,16 @@ class AgentConfig:
             raise ValueError("seed must be non-negative.")
         if self.n_steps <= 0 or self.batch_size <= 0:
             raise ValueError("n_steps and batch_size must be positive.")
+        if self.n_envs <= 0:
+            raise ValueError("n_envs must be positive.")
         if not 0.0 < self.gamma <= 1.0:
             raise ValueError("gamma must lie in (0, 1].")
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be positive.")
         if self.ent_coef < 0:
             raise ValueError("ent_coef must be non-negative.")
+        if self.policy not in ("MlpPolicy", "MlpLstmPolicy"):
+            raise ValueError("policy must be 'MlpPolicy' or 'MlpLstmPolicy'.")
 
     def __post_init__(self) -> None:
         self.validate()

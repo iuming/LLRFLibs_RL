@@ -23,8 +23,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from stable_baselines3 import PPO, SAC, TD3
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from ..registry import get_spec
+from ..registry import get_spec, make
 
 __all__ = ["ModelZoo", "default_zoo_dir"]
 
@@ -65,6 +66,10 @@ class ModelZoo:
     def save(self, model, env_id: str, tag: Optional[str] = None, **extra) -> Path:
         """Save a trained model plus its metadata.
 
+        When the model carries a ``VecNormalize`` wrapper (observation
+        normalization), the statistics are persisted next to the model so
+        that :meth:`load` restores them for correct evaluation.
+
         Args:
             model: Trained SB3 model.
             env_id: Environment id it was trained on.
@@ -77,10 +82,16 @@ class ModelZoo:
         tag = tag or "best"
         path = self._paths(env_id, tag)
         model.save(str(path))
+        normalize = False
+        vn = model.get_vec_normalize_env() if hasattr(model, "get_vec_normalize_env") else None
+        if vn is not None:
+            vn.save(str(path.with_suffix(".vvec.pkl")))
+            normalize = True
         meta = {
             "env_id": env_id,
             "tag": tag,
             "algorithm": type(model).__name__.lower(),
+            "normalize_obs": normalize,
             "env_description": getattr(get_spec(env_id), "description", ""),
         }
         meta.update(extra)
@@ -90,14 +101,15 @@ class ModelZoo:
         return path
 
     def load(self, env_id: str, tag: str = "best"):
-        """Load a model by environment id and tag.
+        """Load a model by environment id and tag (restoring VecNormalize).
 
         Args:
             env_id: Environment id.
             tag:    Tag of the model.
 
         Returns:
-            The loaded SB3 model.
+            The loaded SB3 model (with its observation-normalization wrapper
+            re-attached, if it was saved normalized).
 
         Raises:
             FileNotFoundError: If no model exists for that pair.
@@ -107,7 +119,14 @@ class ModelZoo:
             raise FileNotFoundError(f"no zoo model {env_id}_{tag}")
         meta = self.metadata(env_id, tag)
         cls = _ALGORITHM_CLASSES.get(str(meta.get("algorithm", "ppo")).lower(), PPO)
-        return cls.load(str(path))
+        model = cls.load(str(path))
+        if meta.get("normalize_obs"):
+            vn_pkl = path.with_suffix(".vvec.pkl")
+            if vn_pkl.exists():
+                base_vec = DummyVecEnv([lambda: make(env_id)])
+                vn = VecNormalize.load(str(vn_pkl), base_vec)
+                model.set_env(vn)
+        return model
 
     def metadata(self, env_id: str, tag: str = "best") -> Dict[str, object]:
         """Return the metadata of one saved model."""

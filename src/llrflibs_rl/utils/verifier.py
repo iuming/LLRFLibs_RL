@@ -139,6 +139,15 @@ def verify_environment(
     except Exception as exc:  # noqa: BLE001
         _record(report, "eval_protocol", False, repr(exc))
 
+    # Official Gymnasium contract checker (second opinion on the API shape).
+    try:
+        from gymnasium.utils.env_checker import check_env
+
+        check_env(env, skip_render_check=True)
+        report.checks["gymnasium_check_env"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        _record(report, "gymnasium_check_env", False, repr(exc))
+
     return report
 
 

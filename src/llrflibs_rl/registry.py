@@ -40,11 +40,14 @@ class EnvSpec:
     """Description of a registered environment.
 
     Attributes:
-        env_id:      Unique environment id (e.g. ``"DualLoop-v0"``).
-        description: Human-readable summary.
-        entry:       Environment class (or factory) to instantiate.
-        kind:        Control level: ``"voltage"`` / ``"resonance"`` / ``"vectormodule"``.
-        default_kwargs: Default constructor keyword arguments.
+        env_id:            Unique environment id (e.g. ``"DualLoop-v0"``).
+        description:       Human-readable summary.
+        entry:             Environment class (or factory) to instantiate.
+        kind:              Control level: ``"voltage"`` / ``"resonance"`` /
+                           ``"vectormodule"`` / ``"pulse"``.
+        default_kwargs:    Default constructor keyword arguments.
+        max_episode_steps: Gymnasium-style horizon metadata (informational;
+                           the environments truncate at their own length).
     """
 
     env_id: str
@@ -52,6 +55,21 @@ class EnvSpec:
     entry: Callable[..., gym.Env]
     kind: str
     default_kwargs: Dict[str, Any] = field(default_factory=dict)
+    max_episode_steps: Optional[int] = None
+    nondeterministic: bool = False
+
+    @property
+    def id(self) -> str:
+        """Gymnasium-style spec id (parity alias of ``env_id``)."""
+        return self.env_id
+
+    def make(self, **overrides: Any) -> gym.Env:
+        """Gymnasium-parity factory: instantiate this spec's environment."""
+        kwargs = _default_kwargs_for(self.env_id)
+        kwargs.update(overrides)
+        env = self.entry(**kwargs)
+        env._spec = self  # type: ignore[attr-defined]
+        return env
 
 
 _REGISTRY: Dict[str, EnvSpec] = {}
@@ -66,16 +84,18 @@ def register(
     entry: Callable[..., gym.Env],
     description: str = "",
     kind: str = "",
+    max_episode_steps: Optional[int] = None,
     **default_kwargs: Any,
 ) -> None:
     """Register an environment by id.
 
     Args:
-        env_id:          Unique id.
-        entry:           Environment class (or factory).
-        description:     Human-readable summary.
-        kind:            Control level.
-        default_kwargs:  Default constructor arguments.
+        env_id:            Unique id.
+        entry:             Environment class (or factory).
+        description:       Human-readable summary.
+        kind:              Control level.
+        max_episode_steps: Optional horizon metadata (gymnasium parity).
+        default_kwargs:    Default constructor arguments.
     """
     if env_id in _REGISTRY:
         raise ValueError(f"environment id already registered: {env_id}")
@@ -85,6 +105,7 @@ def register(
         entry=entry,
         kind=kind,
         default_kwargs=dict(default_kwargs),
+        max_episode_steps=max_episode_steps,
     )
 
 
@@ -112,20 +133,36 @@ def list_env_ids() -> List[str]:
     return sorted(_REGISTRY)
 
 
-def make(env_id: str, **overrides: Any) -> gym.Env:
+def make(
+    env_id: str,
+    wrappers: Optional[List[Callable[[gym.Env], gym.Env]]] = None,
+    **overrides: Any,
+) -> gym.Env:
     """Instantiate a registered environment.
+
+    The registry spec is attached as ``env.spec`` and any wrappers are
+    applied, matching the gymnasium ``make`` semantics.
 
     Args:
         env_id:    Environment id.
+        wrappers:  Optional list of wrapper factories applied in order.
         overrides: Constructor arguments that replace the defaults.
 
     Returns:
-        A new environment instance.
+        A new environment instance (possibly wrapped).
     """
     spec = get_spec(env_id)
     kwargs = _default_kwargs_for(env_id)
     kwargs.update(overrides)
-    return spec.entry(**kwargs)
+    env = spec.entry(**kwargs)
+    env._spec = spec  # type: ignore[attr-defined]
+    # Gymnasium parity: expose the episode horizon on the spec.
+    if spec.max_episode_steps is None and hasattr(env, "episode_len"):
+        spec.max_episode_steps = int(env.episode_len)
+    wrapped = env
+    for wrapper in wrappers or []:
+        wrapped = wrapper(wrapped)
+    return wrapped
 
 
 # ---------------------------------------------------------------------------

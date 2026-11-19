@@ -91,6 +91,94 @@ def test_plot_comparison_writes_file(fast_cavity, fast_env_config):
 
 
 # ---------------------------------------------------------------------------
+# Gymnasium parity (A): spec / unwrapped / reward_range / wrappers / checker
+# ---------------------------------------------------------------------------
+
+def test_gymnasium_parity_attributes_and_wrappers():
+    env = rl.make("CavityVoltage-v0")
+    assert env.spec is not None and env.spec.env_id == "CavityVoltage-v0"
+    assert env.unwrapped is env
+    assert env.reward_range[0] == float("-inf")
+    assert env.spec.max_episode_steps == 1500
+
+    from gymnasium.wrappers import TimeLimit
+
+    wrapped = rl.make("CavityVoltage-v0", wrappers=[lambda e: TimeLimit(e, max_episode_steps=50)])
+    assert wrapped.unwrapped is not None  # wrapper chain can be unwrapped
+    assert getattr(wrapped, "spec") is not None
+    obs, _ = wrapped.reset(seed=0)
+    steps = 0
+    for _ in range(200):
+        obs, rw, term, trunc, info = wrapped.step(np.zeros(2, dtype=np.float32))
+        steps += 1
+        if term or trunc:
+            break
+    assert steps == 50  # TimeLimit truncates at 50
+
+
+def test_verifier_runs_official_gymnasium_checker():
+    report = verify_environment("CavityVoltage-v0", n_steps=10)
+    assert report.passed, report.checks
+    assert report.checks["gymnasium_check_env"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Training stack (B): best model / checkpoints / n_envs / zoo vecnorm
+# ---------------------------------------------------------------------------
+
+def test_best_model_and_checkpoint_saved():
+    env_id = "CavityVoltage-v0"
+    cfg = AgentConfig(timesteps=256, seed=0, n_steps=128)
+    best_dir = WORKSPACE_TMP / "best"
+    ckpt_dir = WORKSPACE_TMP / "ckpt"
+    train(
+        lambda: rl.make(env_id), cfg,
+        eval_env_factory=lambda: rl.make(env_id),
+        eval_freq=128, best_model_dir=best_dir,
+        checkpoint_dir=ckpt_dir, checkpoint_freq=100,
+    )
+    assert any((best_dir).glob("best_model.zip"))
+    assert any((ckpt_dir).glob("rl_model_*.zip"))
+
+
+def test_n_envs_and_policy_kwargs_training():
+    env_id = "CavityVoltage-v0"
+    cfg = AgentConfig(timesteps=256, seed=0, n_envs=2, n_steps=128,
+                      policy_kwargs={"net_arch": [32, 32]})
+    model = train(lambda: rl.make(env_id), cfg)
+    assert model is not None
+    with pytest.raises(ValueError):
+        AgentConfig(policy="Nope")
+
+
+def test_model_zoo_round_trips_vecnormalize():
+    from stable_baselines3.common.vec_env import VecNormalize
+
+    env_id = "CavityVoltage-v0"
+    cfg = AgentConfig(timesteps=256, seed=0, normalize_obs=True)
+    model = train(lambda: rl.make(env_id), cfg)
+    zoo = ModelZoo(WORKSPACE_TMP / "zoo_norm")
+    zoo.save(model, env_id, tag="norm")
+    meta = zoo.metadata(env_id, "norm")
+    assert meta["normalize_obs"] is True
+    loaded = zoo.load(env_id, "norm")
+    assert isinstance(getattr(loaded, "env", None), VecNormalize)
+
+
+def test_cross_check_with_sb3(fast_cavity, fast_env_config):
+    from llrflibs_rl.evaluation import cross_check_with_sb3
+
+    factory = lambda: rl.make(  # noqa: E731
+        "CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config
+    )
+    cfg = AgentConfig(timesteps=256, seed=0)
+    model = train(factory, cfg)
+    result = cross_check_with_sb3(model, factory, n_eval_episodes=2)
+    assert result["ok"] is True, result
+    assert result["ours"] is not None and result["sb3"] is not None
+
+
+# ---------------------------------------------------------------------------
 # Requirement: src enrichment — beam schedules / disturbances / Lorentz
 # ---------------------------------------------------------------------------
 

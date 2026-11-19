@@ -32,6 +32,23 @@ class BaseLLRFEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
+    # Gymnasium convention: reward_range metadata of the environments.
+    reward_range = (-float("inf"), float("inf"))
+
+    # ------------------------------------------------------------------
+    # Gymnasium introspection helpers
+    # ------------------------------------------------------------------
+
+    @property
+    def spec(self):
+        """The registry :class:`EnvSpec` attached by ``llrflibs_rl.make``."""
+        return getattr(self, "_spec", None)
+
+    @property
+    def unwrapped(self):
+        """The base (unwrapped) environment — this is the root for LLRF envs."""
+        return self
+
     # ------------------------------------------------------------------
     # Loop helpers
     # ------------------------------------------------------------------

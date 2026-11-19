@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # The parent LLRF library (llrflibs) — prefer the local index, then GitHub.
+          pip install "llrflibs>=1.0.2" || pip install "llrflibs @ git+https://github.com/iuming/LLRFLibsPy.git"
+          pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check src tests
+
+      - name: Pytest
+        run: python -m pytest tests -q -p no:cacheprovider
+
+      - name: Environment contract check
+        run: python -u -m llrflibs_rl.scripts.run verify --n-steps 30

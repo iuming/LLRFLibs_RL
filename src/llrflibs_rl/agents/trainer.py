@@ -15,6 +15,7 @@ Evaluation lives in :mod:`llrflibs_rl.evaluation`.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from stable_baselines3 import PPO, SAC, TD3
@@ -130,11 +131,11 @@ def make_training_vec_env(env_factory: Callable, cfg: AgentConfig):
         cfg:         Agent configuration.
 
     Returns:
-        A :class:`DummyVecEnv` (wrapped in :class:`VecNormalize` when
-        ``cfg.normalize_obs`` is set; reward normalization is disabled so the
-        reported rewards stay in physical units).
+        A :class:`DummyVecEnv` of ``cfg.n_envs`` environments (wrapped in
+        :class:`VecNormalize` when ``cfg.normalize_obs`` is set; reward
+        normalization is disabled so the reported rewards stay physical).
     """
-    vec_env = make_vector_env(env_factory, seed=cfg.seed)
+    vec_env = make_vector_env(env_factory, seed=cfg.seed, n_envs=cfg.n_envs)
     if cfg.normalize_obs:
         vec_env = VecNormalize(
             vec_env,
@@ -166,6 +167,140 @@ def _eval_callback(
     )
 
 
+def _best_model_callback(
+    eval_env_factory: Optional[Callable],
+    eval_freq: int,
+    best_model_dir: Optional[Path],
+    cfg: AgentConfig,
+):
+    """SB3 ``EvalCallback`` that saves the best model into ``best_model_dir``."""
+    if best_model_dir is None or eval_env_factory is None:
+        return None
+    from stable_baselines3.common.callbacks import EvalCallback
+
+    best_model_dir.mkdir(parents=True, exist_ok=True)
+    eval_vec = make_training_vec_env(eval_env_factory, cfg)
+    return EvalCallback(
+        eval_vec,
+        n_eval_episodes=1,
+        eval_freq=eval_freq,
+        deterministic=True,
+        best_model_save_path=str(best_model_dir),
+        verbose=0,
+    )
+
+
+def _checkpoint_callback(
+    checkpoint_dir: Optional[Path],
+    checkpoint_freq: Optional[int],
+):
+    """SB3 ``CheckpointCallback`` that periodically saves model + VecNormalize."""
+    if checkpoint_dir is None or not checkpoint_freq or checkpoint_freq <= 0:
+        return None
+    from stable_baselines3.common.callbacks import CheckpointCallback
+
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    return CheckpointCallback(
+        save_freq=int(checkpoint_freq),
+        save_path=str(checkpoint_dir),
+        save_vecnormalize=True,
+    )
+
+
+def _collect_callbacks(
+    cfg: AgentConfig,
+    eval_env_factory: Optional[Callable],
+    eval_freq: int,
+    eval_seed: int,
+    curve: Optional[List[Dict[str, float]]],
+    best_model_dir: Optional[Path],
+    checkpoint_dir: Optional[Path],
+    checkpoint_freq: Optional[int],
+):
+    """Assemble the training callbacks (curve, best-model, checkpoints)."""
+    callbacks = []
+    callback = _eval_callback(model=None, eval_env_factory=eval_env_factory,
+                              eval_freq=eval_freq, eval_seed=eval_seed, curve=curve)
+    if callback is not None:
+        callbacks.append(callback)
+    callback = _best_model_callback(eval_env_factory, eval_freq, best_model_dir, cfg)
+    if callback is not None:
+        callbacks.append(callback)
+    callback = _checkpoint_callback(checkpoint_dir, checkpoint_freq)
+    if callback is not None:
+        callbacks.append(callback)
+    return callbacks or None
+
+
+def _train(
+    env_factory: Callable,
+    cfg: AgentConfig,
+    algorithm_cls,
+    algorithm_kwargs: Dict[str, object],
+    *,
+    eval_env_factory: Optional[Callable],
+    eval_freq: int,
+    eval_seed: int,
+    curve: Optional[List[Dict[str, float]]],
+    best_model_dir: Optional[Path],
+    checkpoint_dir: Optional[Path],
+    checkpoint_freq: Optional[int],
+):
+    """Shared training loop body used by every algorithm wrapper.
+
+    Args:
+        env_factory:      Environment factory.
+        cfg:              Agent configuration.
+        algorithm_cls:    SB3 algorithm class (``PPO`` / ``SAC`` / ``TD3``).
+        algorithm_kwargs: Extra algorithm-specific constructor arguments.
+        eval_env_factory: Optional evaluation-env factory.
+        eval_freq:        Evaluation frequency in env steps.
+        eval_seed:        Seed of the evaluation environment.
+        curve:            Optional list of evaluation points.
+        best_model_dir:   Directory for the SB3 best-model callback.
+        checkpoint_dir:   Directory for periodic checkpoints.
+        checkpoint_freq:  Steps between checkpoints.
+
+    Returns:
+        A trained model instance (with ``eval_curve``).
+    """
+    vec_env = make_training_vec_env(env_factory, cfg)
+    model = algorithm_cls(
+        cfg.policy,
+        vec_env,
+        verbose=cfg.verbose,
+        seed=cfg.seed,
+        policy_kwargs=cfg.policy_kwargs,
+        **algorithm_kwargs,
+    )
+    _attach_curve(model, curve)
+    callbacks = _collect_callbacks(
+        cfg, eval_env_factory, eval_freq, eval_seed, curve,
+        best_model_dir, checkpoint_dir, checkpoint_freq,
+    )
+    model.learn(total_timesteps=cfg.timesteps, callback=callbacks)
+    return model
+
+
+def _standard_params(
+    env_factory: Callable,
+    cfg: AgentConfig,
+    eval_env_factory: Optional[Callable],
+    eval_freq: int,
+    eval_seed: int,
+    curve: Optional[List[Dict[str, float]]],
+    best_model_dir: Optional[Path],
+    checkpoint_dir: Optional[Path],
+    checkpoint_freq: Optional[int],
+):
+    return dict(
+        env_factory=env_factory, cfg=cfg,
+        eval_env_factory=eval_env_factory, eval_freq=eval_freq, eval_seed=eval_seed,
+        curve=curve, best_model_dir=best_model_dir,
+        checkpoint_dir=checkpoint_dir, checkpoint_freq=checkpoint_freq,
+    )
+
+
 def train_ppo(
     env_factory: Callable,
     cfg: AgentConfig,
@@ -174,6 +309,9 @@ def train_ppo(
     eval_freq: int = 2048,
     eval_seed: int = 0,
     curve: Optional[List[Dict[str, float]]] = None,
+    best_model_dir: Optional[Path] = None,
+    checkpoint_dir: Optional[Path] = None,
+    checkpoint_freq: Optional[int] = None,
 ):
     """Train a PPO policy.
 
@@ -181,30 +319,30 @@ def train_ppo(
         env_factory:      Environment factory.
         cfg:              Agent configuration.
         eval_env_factory: Optional evaluation-env factory (enables the
-                          training-reward curve).
+                          training-reward curve and best-model saving).
         eval_freq:        Evaluation frequency in env steps.
         eval_seed:        Seed of the evaluation environment.
         curve:            Optional list that receives the evaluation points.
+        best_model_dir:   Optional directory for the best saved model.
+        checkpoint_dir:   Optional directory for periodic checkpoints.
+        checkpoint_freq:  Optional steps between checkpoints.
 
     Returns:
         A trained ``stable_baselines3.PPO`` instance (with ``eval_curve``).
     """
-    vec_env = make_training_vec_env(env_factory, cfg)
-    model = PPO(
-        "MlpPolicy",
-        vec_env,
-        verbose=cfg.verbose,
-        n_steps=cfg.n_steps,
-        batch_size=cfg.batch_size,
-        gamma=cfg.gamma,
-        learning_rate=cfg.learning_rate,
-        ent_coef=cfg.ent_coef,
-        seed=cfg.seed,
+    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    return _train(
+        algorithm_cls=PPO,
+        algorithm_kwargs={
+            "n_steps": cfg.n_steps,
+            "batch_size": cfg.batch_size,
+            "gamma": cfg.gamma,
+            "learning_rate": cfg.learning_rate,
+            "ent_coef": cfg.ent_coef,
+        },
+        **params,
     )
-    _attach_curve(model, curve)
-    callback = _eval_callback(model, eval_env_factory, eval_freq, eval_seed, curve)
-    model.learn(total_timesteps=cfg.timesteps, callback=callback)
-    return model
 
 
 def train_sac(
@@ -215,36 +353,24 @@ def train_sac(
     eval_freq: int = 2048,
     eval_seed: int = 0,
     curve: Optional[List[Dict[str, float]]] = None,
+    best_model_dir: Optional[Path] = None,
+    checkpoint_dir: Optional[Path] = None,
+    checkpoint_freq: Optional[int] = None,
 ):
-    """Train a SAC policy.
-
-    Args:
-        env_factory:      Environment factory.
-        cfg:              Agent configuration.
-        eval_env_factory: Optional evaluation-env factory (see :func:`train_ppo`).
-        eval_freq:        Evaluation frequency in env steps.
-        eval_seed:        Seed of the evaluation environment.
-        curve:            Optional list that receives the evaluation points.
-
-    Returns:
-        A trained ``stable_baselines3.SAC`` instance.
-    """
-    vec_env = make_training_vec_env(env_factory, cfg)
-    model = SAC(
-        "MlpPolicy",
-        vec_env,
-        verbose=cfg.verbose,
-        train_freq=cfg.train_freq,
-        gradient_steps=cfg.gradient_steps,
-        batch_size=cfg.batch_size,
-        gamma=cfg.gamma,
-        learning_rate=cfg.learning_rate,
-        seed=cfg.seed,
+    """Train a SAC policy (parameters as in :func:`train_ppo`)."""
+    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    return _train(
+        algorithm_cls=SAC,
+        algorithm_kwargs={
+            "train_freq": cfg.train_freq,
+            "gradient_steps": cfg.gradient_steps,
+            "batch_size": cfg.batch_size,
+            "gamma": cfg.gamma,
+            "learning_rate": cfg.learning_rate,
+        },
+        **params,
     )
-    _attach_curve(model, curve)
-    callback = _eval_callback(model, eval_env_factory, eval_freq, eval_seed, curve)
-    model.learn(total_timesteps=cfg.timesteps, callback=callback)
-    return model
 
 
 def train_td3(
@@ -255,36 +381,24 @@ def train_td3(
     eval_freq: int = 2048,
     eval_seed: int = 0,
     curve: Optional[List[Dict[str, float]]] = None,
+    best_model_dir: Optional[Path] = None,
+    checkpoint_dir: Optional[Path] = None,
+    checkpoint_freq: Optional[int] = None,
 ):
-    """Train a TD3 policy.
-
-    Args:
-        env_factory:      Environment factory.
-        cfg:              Agent configuration.
-        eval_env_factory: Optional evaluation-env factory (see :func:`train_ppo`).
-        eval_freq:        Evaluation frequency in env steps.
-        eval_seed:        Seed of the evaluation environment.
-        curve:            Optional list that receives the evaluation points.
-
-    Returns:
-        A trained ``stable_baselines3.TD3`` instance.
-    """
-    vec_env = make_training_vec_env(env_factory, cfg)
-    model = TD3(
-        "MlpPolicy",
-        vec_env,
-        verbose=cfg.verbose,
-        train_freq=cfg.train_freq,
-        gradient_steps=cfg.gradient_steps,
-        batch_size=cfg.batch_size,
-        gamma=cfg.gamma,
-        learning_rate=cfg.learning_rate,
-        seed=cfg.seed,
+    """Train a TD3 policy (parameters as in :func:`train_ppo`)."""
+    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    return _train(
+        algorithm_cls=TD3,
+        algorithm_kwargs={
+            "train_freq": cfg.train_freq,
+            "gradient_steps": cfg.gradient_steps,
+            "batch_size": cfg.batch_size,
+            "gamma": cfg.gamma,
+            "learning_rate": cfg.learning_rate,
+        },
+        **params,
     )
-    _attach_curve(model, curve)
-    callback = _eval_callback(model, eval_env_factory, eval_freq, eval_seed, curve)
-    model.learn(total_timesteps=cfg.timesteps, callback=callback)
-    return model
 
 
 def train(
@@ -295,6 +409,9 @@ def train(
     eval_freq: int = 2048,
     eval_seed: int = 0,
     curve: Optional[List[Dict[str, float]]] = None,
+    best_model_dir: Optional[Path] = None,
+    checkpoint_dir: Optional[Path] = None,
+    checkpoint_freq: Optional[int] = None,
 ):
     """Train an agent using the algorithm selected in the configuration.
 
@@ -305,23 +422,26 @@ def train(
         eval_freq:        Evaluation frequency in env steps.
         eval_seed:        Seed of the evaluation environment.
         curve:            Optional list that receives the evaluation points.
+        best_model_dir:   Optional directory for the best saved model.
+        checkpoint_dir:   Optional directory for periodic checkpoints.
+        checkpoint_freq:  Optional steps between checkpoints.
 
     Returns:
         The trained model (PPO, SAC or TD3).
     """
     if cfg.algorithm == "ppo":
-        return train_ppo(
-            env_factory, cfg, eval_env_factory=eval_env_factory,
-            eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
-        )
+        return train_ppo(env_factory, cfg, eval_env_factory=eval_env_factory,
+                         eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
+                         best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
+                         checkpoint_freq=checkpoint_freq)
     if cfg.algorithm == "sac":
-        return train_sac(
-            env_factory, cfg, eval_env_factory=eval_env_factory,
-            eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
-        )
+        return train_sac(env_factory, cfg, eval_env_factory=eval_env_factory,
+                         eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
+                         best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
+                         checkpoint_freq=checkpoint_freq)
     if cfg.algorithm == "td3":
-        return train_td3(
-            env_factory, cfg, eval_env_factory=eval_env_factory,
-            eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
-        )
+        return train_td3(env_factory, cfg, eval_env_factory=eval_env_factory,
+                         eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
+                         best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
+                         checkpoint_freq=checkpoint_freq)
     raise ValueError(f"unsupported algorithm: {cfg.algorithm}")
