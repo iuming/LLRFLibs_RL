@@ -62,6 +62,8 @@ def _parser() -> argparse.ArgumentParser:
                          help="live-render every N training steps")
     p_train.add_argument("--render-steps", type=int, default=300,
                          help="samples per live-rendered episode")
+    p_train.add_argument("--render-http", type=int, nargs="?", const=0, default=-1,
+                         help="also serve a browser live view on this port (0 = auto port)")
     p_train.set_defaults(func=_cmd_train)
 
     p_eval = sub.add_parser("eval", help="evaluate a saved model against the baseline")
@@ -205,6 +207,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         render=args.render,
         render_freq=args.render_freq,
         render_steps=args.render_steps,
+        render_http=args.render_http,
     )
     print(f"\nFinished: {summary['env_id']}  [{summary['baseline']}] baseline={summary['baseline_reward']:,.2f} "
           f"RL={summary['rl_reward']:,.2f}")

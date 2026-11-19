@@ -93,6 +93,8 @@ class RenderableEnv:
         layout:      ``"console"`` (default, EPICS-style) or ``"simple"``.
         max_steps:   Rolling window length shown on the time axes.
         pause_sec:   GUI refresh interval used by ``human`` mode.
+        streamer:    Optional :class:`~llrflibs_rl.utils.live_http.HttpStreamer`
+                     that receives PNG frames for a browser live view.
     """
 
     def __init__(
@@ -103,6 +105,7 @@ class RenderableEnv:
         layout: str = "console",
         max_steps: int = 1500,
         pause_sec: float = 0.02,
+        streamer=None,
     ) -> None:
         if render_mode not in ("human", "rgb_array"):
             raise ValueError("render_mode must be 'human' or 'rgb_array'.")
@@ -114,6 +117,8 @@ class RenderableEnv:
         self.layout = layout
         self.max_steps = int(max_steps)
         self.pause_sec = float(pause_sec)
+        self.streamer = streamer
+        self._last_push = 0.0
         self._fig = None
         self._ax = None
         self._lines: dict[str, Any] = {}
@@ -121,6 +126,28 @@ class RenderableEnv:
         self._marker: dict[str, Any] = {}
         self._history: dict[str, list[float]] = {}
         self._reset_history()
+
+    # ------------------------------------------------------------------
+    # Browser live view
+    # ------------------------------------------------------------------
+
+    def _push_frame(self) -> None:
+        """Publish a throttled PNG snapshot to the HTTP streamer (if any)."""
+        if self.streamer is None or self._fig is None:
+            return
+        import io
+        import time
+
+        now = time.monotonic()
+        if now - self._last_push < 0.15:  # ~6 fps browser refresh
+            return
+        try:
+            buf = io.BytesIO()
+            self._fig.savefig(buf, format="png", dpi=60)
+            self.streamer.publish(buf.getvalue())
+            self._last_push = now
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Environment delegation
@@ -250,6 +277,54 @@ class RenderableEnv:
             self._build_simple(plt)
         else:
             self._build_console(plt)
+        self._raise_window()
+
+    def _raise_window(self) -> None:
+        """Bring the window to the front and flash it to the top.
+
+        The console window can be created behind the terminal or lose focus, so
+        we explicitly raise/lift it on GUI backends; on headless backends this
+        is a safe no-op.
+        """
+        if self._fig is None:
+            return
+        try:
+            manager = getattr(self._fig.canvas, "manager", None)
+            window = getattr(manager, "window", None)
+            if window is None:
+                return
+            if hasattr(window, "lift"):
+                window.lift()
+            if hasattr(window, "attributes"):
+                try:
+                    window.attributes("-topmost", True)
+                    after = getattr(window, "after", None)
+                    if after is not None:
+                        after(500, lambda: window.attributes("-topmost", False))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def pump_events(self, seconds: float = 0.0005) -> None:
+        """Give the GUI event loop time so the live window stays responsive.
+
+        Called by the training callback between refreshes so the console keeps
+        updating (like an oscilloscope) instead of freezing until the next
+        ``render_freq``.  A no-op on headless (Agg) backends.
+        """
+        if self._fig is None:
+            return
+        import matplotlib.pyplot as plt
+
+        if "agg" in plt.get_backend().lower():
+            return
+        try:
+            plt.pause(max(0.0, float(seconds)))
+            self._fig.canvas.flush_events()
+        except Exception:
+            pass
+        self._push_frame()
 
     def _build_simple(self, plt) -> None:
         self._fig, axes = plt.subplots(2, 2, figsize=(11, 7))
@@ -442,6 +517,7 @@ class RenderableEnv:
         title_color = _FG if self.layout == "console" else "#000000"
         self._fig.suptitle(f"{self.title}   |   {step_txt}", color=title_color)
         self._fig.canvas.draw_idle()
+        self._push_frame()
 
         if mode == "rgb_array":
             return self._to_rgb_array()

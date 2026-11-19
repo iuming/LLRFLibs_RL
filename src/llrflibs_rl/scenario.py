@@ -120,6 +120,7 @@ def run_experiment(
     render: bool = False,
     render_freq: int = 2048,
     render_steps: int = 300,
+    render_http: int = -1,
 ) -> dict[str, object]:
     """Train an agent on an environment and persist the full experiment.
 
@@ -139,6 +140,7 @@ def run_experiment(
         render:         Periodically live-render the policy while training.
         render_freq:    Live-render every this many training steps.
         render_steps:   Samples per live-rendered episode.
+        render_http:    Port for the browser live view (0 = auto, -1 = off).
 
     Returns:
         A summary dictionary with baseline / RL metrics and the artifact path.
@@ -182,6 +184,7 @@ def run_experiment(
         render=render,
         render_freq=render_freq,
         render_steps=render_steps,
+        render_http=render_http,
     )
     rl_policy = action_from_model(model)
     rl_metrics = evaluate_episode(make(env_id), rl_policy, seed=seeds[0])

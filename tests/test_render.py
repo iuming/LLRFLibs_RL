@@ -130,3 +130,47 @@ def test_simple_layout_still_works(fast_cavity, fast_env_config):
     frame = env.render("rgb_array")
     assert frame.ndim == 3 and frame.dtype == np.uint8
     env.close()
+
+
+def test_http_streamer_serves_frames():
+    import urllib.request
+
+    from llrflibs_rl.utils.live_http import HttpStreamer
+
+    stream = HttpStreamer(port=0).start()
+    try:
+        # Placeholder frame is served before the first publish.
+        with urllib.request.urlopen(stream.url + "frame") as response:
+            assert response.status == 200
+            assert response.headers["Content-Type"] == "image/png"
+        payload = b"\x89PNG\r\n\x1a\n\x00fake-payload"
+        stream.publish(payload)
+        with urllib.request.urlopen(stream.url + "frame?q=1") as response:
+            assert response.read() == payload
+        with urllib.request.urlopen(stream.url) as response:
+            html = response.read().decode("utf-8")
+        assert "LLRF live console" in html
+    finally:
+        stream.close()
+
+
+def test_renderable_pushes_frames_to_streamer(fast_cavity, fast_env_config):
+    import time
+
+    from llrflibs_rl.envs.render import RenderableEnv
+    from llrflibs_rl.utils.live_http import HttpStreamer
+
+    stream = HttpStreamer(port=0).start()
+    try:
+        env = RenderableEnv(
+            rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config),
+            render_mode="rgb_array", streamer=stream,
+        )
+        env.reset(seed=0)
+        env.step(np.array([1.0, 0.0], dtype=np.float32))
+        env.render("rgb_array")
+        time.sleep(0.2)  # let the push throttle elapse
+        env.render("rgb_array")
+        assert stream.frame_count >= 1
+    finally:
+        stream.close()
