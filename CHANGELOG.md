@@ -95,6 +95,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   record the *time-varying* detuning actually applied each sample so the
   detuning panel shows real microphonics / Lorentz dynamics; available through
   `demo --layout mech` and `examples/render_demo.py --layout mech`.
+- **Full LLRF closed-loop environment (`LLRFLoop-v0`)** — simulates the LLRF
+  block diagram: the fast FPGA loop (complex-PI + feedforward + RL I/Q
+  residual -> DAC -> I/Q modulator -> SSA -> cavity, closed via the
+  pick-up/mixer/ADC feedback chain) together with the slow tuner loop.  The
+  RL action is the two-channel picture ``Box(-1,1,(3,)) = [tuner, RF_I, RF_Q]``;
+  the observation is the 13-feature dual-loop state plus the normalized RL RF
+  residual.  A two-channel classical baseline (error-PI on the RF + detuning-PI
+  on the tuner) is provided, and the inner-loop / tuner-only / multi-cavity
+  environments map onto the same diagram.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

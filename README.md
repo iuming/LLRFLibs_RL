@@ -185,6 +185,31 @@ amplifier -> cavity) with beam current, microphonics and the multi-mode
 mechanical (Lorentz) detuning of the canonical 1.3 GHz SC cavity, and prints
 the flattop voltage and the detuning statistics.
 
+#### The full LLRF closed-loop environment (`LLRFLoop-v0`)
+
+`LLRFLoop-v0` simulates the closed loop of the LLRF block diagram
+(`llrf_control_loop_standalone.tex`): the **fast FPGA loop** — PI + feedforward
++ RL residual -> DAC -> I/Q modulator -> SSA -> cavity, closed through the
+pick-up / mixer / LPF / ADC / I-Q-detection chain — together with the **slow
+tuner loop** that compensates the cavity detuning.
+
+The RL action is exactly the two-channel picture of the schematic:
+
+| action dim | meaning |
+|---|---|
+| `0` `tuner` | normalized slow mechanical-tuner command (resonance / detuning channel) |
+| `1`, `2` `RF_I`, `RF_Q` | normalized I/Q residual of the FPGA RF drive signal (added on top of the inner complex-PI feedback and analytic feedforward) |
+
+```bash
+python run.py demo --env LLRFLoop-v0 --policy pi --layout console   # watch both loops
+python run.py train --env LLRFLoop-v0 --render-http 8192 --timesteps 200000
+```
+
+The other registered environments map onto the same block diagram: the
+`CavityVoltage` / `PIAssist` / `ADRCAssist` tasks are the inner FPGA loop alone,
+`FrequencyControl` / `DualLoop` are the tuner (slow) loop alone, and
+`VectorSum*` are the multi-cavity version.
+
 ## Classical baselines
 
 Every training run compares RL against a classical controller selected with

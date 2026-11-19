@@ -27,6 +27,7 @@ def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_confi
     from llrflibs_rl.configs.env import (
         DualLoopEnvConfig,
         FrequencyEnvConfig,
+        LoopEnvConfig,
         VectorSumEnvConfig,
     )
     from llrflibs_rl.envs.gain_scheduling import GainSchedulingConfig
@@ -72,8 +73,14 @@ def test_gymnasium_api_contract_and_registry(env_id, fast_cavity, fast_env_confi
             loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,
             max_drive_abs=None, max_drive_slew_per_step=None,
         ), reward_cfg=RewardConfig())
-    else:  # DualLoop-v0 / DualLoop-v1
+    elif kind in ("DualLoop-v0",):
         env = rl.make(env_id, cavity=fast_cavity, env_cfg=DualLoopEnvConfig(
+            episode_len=fast_env_config.episode_len, measurement_noise_std=0.0,
+            loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,
+            max_drive_abs=None, max_drive_slew_per_step=None,
+        ), reward_cfg=RewardConfig())
+    else:  # LLRFLoop-v0
+        env = rl.make(env_id, cavity=fast_cavity, env_cfg=LoopEnvConfig(
             episode_len=fast_env_config.episode_len, measurement_noise_std=0.0,
             loop_delay_steps=0, randomize_detuning=0.0, randomize_disturbance=False,
             max_drive_abs=None, max_drive_slew_per_step=None,

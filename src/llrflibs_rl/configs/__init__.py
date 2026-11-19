@@ -18,6 +18,7 @@ from .env import (
     DualLoopEnvConfig,
     EnvConfig,
     FrequencyEnvConfig,
+    LoopEnvConfig,
     ResidualEnvConfig,
     VectorSumEnvConfig,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "DualLoopEnvConfig",
     "EnvConfig",
     "FrequencyEnvConfig",
+    "LoopEnvConfig",
     "PIControllerConfig",
     "ResidualEnvConfig",
     "RewardConfig",

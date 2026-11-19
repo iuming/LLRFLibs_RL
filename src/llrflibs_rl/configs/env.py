@@ -261,6 +261,31 @@ class DualLoopEnvConfig(EnvConfig):
 
 
 @dataclass
+class LoopEnvConfig(DualLoopEnvConfig):
+    """Configuration of the full control-loop environment.
+
+    Extends the dual-loop task so that the *RF drive channel* (the FPGA output)
+    is also commanded by RL:  the action becomes ``[tuner, RF_I, RF_Q]`` — the
+    slow tuner actuator plus the normalized I/Q residual added on top of the
+    inner FPGA complex-PI + feedforward signal.
+
+    Attributes:
+        drive_limit_ratio: Max RL RF-residual magnitude as a fraction of the
+                     cavity voltage scale (maps RF_I / RF_Q in ``[-1, 1]``).
+    """
+
+    drive_limit_ratio: float = 0.10
+
+    def validate(self) -> None:
+        super().validate()
+        if self.drive_limit_ratio <= 0:
+            raise ValueError("drive_limit_ratio must be positive.")
+
+    def __post_init__(self) -> None:
+        self.validate()
+
+
+@dataclass
 class VectorSumEnvConfig(EnvConfig):
     """Configuration for the multi-cavity vector-sum environment.
 

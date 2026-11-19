@@ -25,6 +25,7 @@ from .configs import (
     ADRCControllerConfig,
     DualLoopEnvConfig,
     FrequencyEnvConfig,
+    LoopEnvConfig,
     PIControllerConfig,
     ResidualEnvConfig,
     RewardConfig,
@@ -212,6 +213,11 @@ def _default_kwargs_for(env_id: str) -> dict[str, Any]:
         "DualLoop-v0": {
             "cavity": nominal_sc_cavity(),
             "env_cfg": DualLoopEnvConfig(),
+            "reward_cfg": RewardConfig(),
+        },
+        "LLRFLoop-v0": {
+            "cavity": nominal_sc_cavity(),
+            "env_cfg": LoopEnvConfig(),
             "reward_cfg": RewardConfig(),
         },
         "VectorSum-v0": {

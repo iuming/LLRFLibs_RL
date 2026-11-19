@@ -190,6 +190,57 @@ def make_detuning_pi_policy(
     return _policy
 
 
+def make_loop_pi_policy(
+    env,
+    kp: float = 0.8,
+    ki: float = 2.0e5,
+    tuner_kp: float = 0.8,
+    tuner_ki: float = 5.0e3,
+) -> Callable[[np.ndarray], np.ndarray]:
+    """Two-channel classical controller for the full control-loop task.
+
+    Commands both action channels of :class:`~llrflibs_rl.envs.loop.LLRFLoopEnv`:
+    a complex-PI on the fast RF error (RF_I / RF_Q) plus a PI on the residual
+    detuning for the slow tuner channel.
+
+    Args:
+        env:      The loop environment (exposes ``reference``, ``plant``,
+                  ``drive_limit`` and ``detuning_limit``).
+        kp:       Fast-loop proportional gain.
+        ki:       Fast-loop integral gain.
+        tuner_kp: Slow-loop proportional gain.
+        tuner_ki: Slow-loop integral gain.
+
+    Returns:
+        A policy mapping an observation to ``[tuner, RF_I, RF_Q]``.
+    """
+    state: dict[str, object] = {"rf_integral": 0.0 + 0.0j, "tuner_integral": 0.0}
+
+    def _policy(obs: np.ndarray) -> np.ndarray:
+        idx = min(env._step_index, env.episode_len - 1)
+        sp = env.reference.sp_at(idx)
+        error = sp - env.plant.vc
+        state["rf_integral"] += error * env.config.Ts
+        correction = -(kp * error + ki * state["rf_integral"])
+        limit = max(env.drive_limit, 1.0)
+
+        detuning = env.plant.detuning
+        state["tuner_integral"] += detuning * env.config.Ts
+        tuner_cmd = -(tuner_kp * detuning + tuner_ki * state["tuner_integral"])
+        tuner = np.clip(tuner_cmd / max(env.detuning_limit, 1.0), -1.0, 1.0)
+
+        return np.array(
+            [
+                float(tuner),
+                float(np.clip(correction.real / limit, -1.0, 1.0)),
+                float(np.clip(correction.imag / limit, -1.0, 1.0)),
+            ],
+            dtype=np.float32,
+        )
+
+    return _policy
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -228,6 +279,8 @@ def make_baseline_policy(
             return make_pi_residual_policy(env, kp=kp, ki=ki)
         if cls in ("FrequencyEnv", "DualLoopEnv"):
             return make_detuning_pi_policy(env, kp=kp, ki=ki)
+        if cls == "LLRFLoopEnv":
+            return make_loop_pi_policy(env, kp=kp, ki=ki)
         if cls in ("PIAssistEnv", "ADRCAssistEnv", "GainSchedulingEnv", "AdaptivePulseEnv"):
             # The classical controller is already the inner loop (assist), or
             # the fixed gains are exactly the zero action (gain scheduling),
@@ -240,6 +293,8 @@ def make_baseline_policy(
             return make_adrc_like_policy(env, kp=kp, ki=ki)
         if cls in ("FrequencyEnv", "DualLoopEnv"):
             return make_detuning_pi_policy(env, kp=kp, ki=ki)
+        if cls == "LLRFLoopEnv":
+            return make_loop_pi_policy(env, kp=kp, ki=ki)
         if cls in ("PIAssistEnv", "ADRCAssistEnv", "GainSchedulingEnv", "AdaptivePulseEnv"):
             return zero_policy(env)
         return zero_policy(env)

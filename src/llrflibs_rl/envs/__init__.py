@@ -15,6 +15,7 @@ once the package is imported (the top-level ``llrflibs_rl`` import does that).
 from .. import registry as _registry
 from .core import BaseLLRFEnv
 from .gain_scheduling import GainSchedulingEnv
+from .loop import LLRFLoopEnv
 from .pulse_to_pulse import AdaptivePulseEnv, BeamLoadingEnv
 from .render import RenderableEnv
 from .resonance import DualLoopEnv, FrequencyEnv
@@ -109,6 +110,13 @@ _registry.register(
     kind="resonance",
 )
 _registry.register(
+    "LLRFLoop-v0",
+    description="Full closed loop: FPGA RF drive (PI + FF + RL I/Q residual) "
+                "with an RL slow tuner — the two-channel action [tuner, RF_I, RF_Q].",
+    entry=LLRFLoopEnv,
+    kind="loop",
+)
+_registry.register(
     "VectorSum-v1",
     description="VectorSum-v0 with a shorter (1400-sample) episode.",
     entry=VectorSumEnv,
@@ -131,6 +139,7 @@ __all__ = [
     "EpisodicMonitor",
     "FrequencyEnv",
     "GainSchedulingEnv",
+    "LLRFLoopEnv",
     "PIAssistEnv",
     "RenderableEnv",
     "VectorSumEnv",
