@@ -56,6 +56,12 @@ def _parser() -> argparse.ArgumentParser:
     p_train.add_argument("--seed", type=int, default=None)
     p_train.add_argument("--runs-dir", type=str, default=None)
     p_train.add_argument("--quick", action="store_true")
+    p_train.add_argument("--render", action="store_true",
+                         help="live-render a short episode of the policy while it trains")
+    p_train.add_argument("--render-freq", type=int, default=2048,
+                         help="live-render every N training steps")
+    p_train.add_argument("--render-steps", type=int, default=300,
+                         help="samples per live-rendered episode")
     p_train.set_defaults(func=_cmd_train)
 
     p_eval = sub.add_parser("eval", help="evaluate a saved model against the baseline")
@@ -196,6 +202,9 @@ def _cmd_train(args: argparse.Namespace) -> None:
         seed=seed,
         quick=args.quick,
         runs_dir=Path(args.runs_dir) if args.runs_dir else None,
+        render=args.render,
+        render_freq=args.render_freq,
+        render_steps=args.render_steps,
     )
     print(f"\nFinished: {summary['env_id']}  [{summary['baseline']}] baseline={summary['baseline_reward']:,.2f} "
           f"RL={summary['rl_reward']:,.2f}")
@@ -496,8 +505,12 @@ def _cmd_demo(args: argparse.Namespace) -> None:
     from ..controllers.baselines import make_baseline_policy
     from ..envs.render import RenderableEnv
 
-    env = RenderableEnv(make(args.env), render_mode="rgb_array", title=f"{args.env} — baseline={args.policy}")
+    env = RenderableEnv(
+        make(args.env), render_mode="human" if (args.show and interactive) else "rgb_array",
+        title=f"{args.env} — baseline={args.policy}",
+    )
     policy = make_baseline_policy(env, args.policy)
+    render_mode = "human" if (args.show and interactive) else "rgb_array"
     obs, _ = env.reset(seed=args.seed)
     total_reward = 0.0
     steps = 0
@@ -506,7 +519,7 @@ def _cmd_demo(args: argparse.Namespace) -> None:
         total_reward += float(reward)
         steps += 1
         if i % max(1, args.frame) == 0 or terminated or truncated:
-            env.render("rgb_array")
+            env.render(render_mode)  # human mode streams live on GUI backends
         if terminated or truncated:
             break
 

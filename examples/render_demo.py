@@ -38,6 +38,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--frame", type=int, default=4, help="render every N-th step")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--show", action="store_true", help="show a live/interactive window")
+    parser.add_argument("--live", action="store_true",
+                        help="render in real time, frame by frame (human mode on GUI)")
     parser.add_argument("--out", default=None, help="PNG path (default gallery/demo_<env>.png)")
     return parser
 
@@ -50,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     backend = matplotlib.get_backend().lower()
     gui = any(token in backend for token in ("tk", "qt", "gtk", "wx", "macosx"))
     # Headless-safe default: render into a figure but never open a window.
-    if not args.show and gui:
+    if not (args.show or args.live) and gui:
         matplotlib.use("Agg", force=True)
 
     import matplotlib.pyplot as plt
@@ -59,8 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     from llrflibs_rl.controllers.baselines import make_baseline_policy
     from llrflibs_rl.envs.render import RenderableEnv
 
+    render_mode = "human" if (args.show or args.live) else "rgb_array"
     env = RenderableEnv(
-        rl.make(args.env), render_mode="rgb_array", title=f"{args.env} — baseline={args.policy}"
+        rl.make(args.env), render_mode=render_mode, title=f"{args.env} — baseline={args.policy}"
     )
     policy = make_baseline_policy(env, args.policy)
     obs, _ = env.reset(seed=args.seed)
@@ -72,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         total_reward += float(reward)
         steps += 1
         if i % max(1, args.frame) == 0 or terminated or truncated:
-            env.render("rgb_array")
+            env.render(render_mode)
         if terminated or truncated:
             break
 
@@ -80,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     env.fig.savefig(out, dpi=110)
     print(f"[demo] {steps} steps, reward {total_reward:,.2f} -> {out}")
-    if args.show and gui:
+    if (args.show or args.live) and gui:
         plt.show(block=True)
     return 0
 

@@ -244,6 +244,9 @@ def _train(
     best_model_dir: Path | None,
     checkpoint_dir: Path | None,
     checkpoint_freq: int | None,
+    render: bool,
+    render_freq: int,
+    render_steps: int,
 ):
     """Shared training loop body used by every algorithm wrapper.
 
@@ -259,6 +262,9 @@ def _train(
         best_model_dir:   Directory for the SB3 best-model callback.
         checkpoint_dir:   Directory for periodic checkpoints.
         checkpoint_freq:  Steps between checkpoints.
+        render:           Enable periodic live rendering of the policy.
+        render_freq:      Live-render every this many training steps.
+        render_steps:     Samples per live-rendered episode.
 
     Returns:
         A trained model instance (with ``eval_curve``).
@@ -277,6 +283,11 @@ def _train(
         cfg, eval_env_factory, eval_freq, eval_seed, curve,
         best_model_dir, checkpoint_dir, checkpoint_freq,
     )
+    if render:
+        from .render import LiveRenderCallback
+
+        render_cb = LiveRenderCallback(env_factory, render_freq=render_freq, render_steps=render_steps)
+        callbacks = list(callbacks or []) + [render_cb]
     model.learn(total_timesteps=cfg.timesteps, callback=callbacks)
     return model
 
@@ -291,12 +302,16 @@ def _standard_params(
     best_model_dir: Path | None,
     checkpoint_dir: Path | None,
     checkpoint_freq: int | None,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ):
     return dict(
         env_factory=env_factory, cfg=cfg,
         eval_env_factory=eval_env_factory, eval_freq=eval_freq, eval_seed=eval_seed,
         curve=curve, best_model_dir=best_model_dir,
         checkpoint_dir=checkpoint_dir, checkpoint_freq=checkpoint_freq,
+        render=render, render_freq=render_freq, render_steps=render_steps,
     )
 
 
@@ -311,6 +326,9 @@ def train_ppo(
     best_model_dir: Path | None = None,
     checkpoint_dir: Path | None = None,
     checkpoint_freq: int | None = None,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ):
     """Train a PPO policy.
 
@@ -329,8 +347,11 @@ def train_ppo(
     Returns:
         A trained ``stable_baselines3.PPO`` instance (with ``eval_curve``).
     """
-    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
-                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    params = _standard_params(
+        env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+        curve, best_model_dir, checkpoint_dir, checkpoint_freq,
+        render, render_freq, render_steps,
+    )
     return _train(
         algorithm_cls=PPO,
         algorithm_kwargs={
@@ -355,10 +376,16 @@ def train_sac(
     best_model_dir: Path | None = None,
     checkpoint_dir: Path | None = None,
     checkpoint_freq: int | None = None,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ):
     """Train a SAC policy (parameters as in :func:`train_ppo`)."""
-    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
-                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    params = _standard_params(
+        env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+        curve, best_model_dir, checkpoint_dir, checkpoint_freq,
+        render, render_freq, render_steps,
+    )
     return _train(
         algorithm_cls=SAC,
         algorithm_kwargs={
@@ -383,10 +410,16 @@ def train_td3(
     best_model_dir: Path | None = None,
     checkpoint_dir: Path | None = None,
     checkpoint_freq: int | None = None,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ):
     """Train a TD3 policy (parameters as in :func:`train_ppo`)."""
-    params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
-                              curve, best_model_dir, checkpoint_dir, checkpoint_freq)
+    params = _standard_params(
+        env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
+        curve, best_model_dir, checkpoint_dir, checkpoint_freq,
+        render, render_freq, render_steps,
+    )
     return _train(
         algorithm_cls=TD3,
         algorithm_kwargs={
@@ -411,6 +444,9 @@ def train(
     best_model_dir: Path | None = None,
     checkpoint_dir: Path | None = None,
     checkpoint_freq: int | None = None,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ):
     """Train an agent using the algorithm selected in the configuration.
 
@@ -424,6 +460,9 @@ def train(
         best_model_dir:   Optional directory for the best saved model.
         checkpoint_dir:   Optional directory for periodic checkpoints.
         checkpoint_freq:  Optional steps between checkpoints.
+        render:           Periodically live-render the policy being trained.
+        render_freq:      Live-render every this many training steps.
+        render_steps:     Samples per live-rendered episode.
 
     Returns:
         The trained model (PPO, SAC or TD3).
@@ -432,15 +471,18 @@ def train(
         return train_ppo(env_factory, cfg, eval_env_factory=eval_env_factory,
                          eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
                          best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
-                         checkpoint_freq=checkpoint_freq)
+                         checkpoint_freq=checkpoint_freq, render=render,
+                         render_freq=render_freq, render_steps=render_steps)
     if cfg.algorithm == "sac":
         return train_sac(env_factory, cfg, eval_env_factory=eval_env_factory,
                          eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
                          best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
-                         checkpoint_freq=checkpoint_freq)
+                         checkpoint_freq=checkpoint_freq, render=render,
+                         render_freq=render_freq, render_steps=render_steps)
     if cfg.algorithm == "td3":
         return train_td3(env_factory, cfg, eval_env_factory=eval_env_factory,
                          eval_freq=eval_freq, eval_seed=eval_seed, curve=curve,
                          best_model_dir=best_model_dir, checkpoint_dir=checkpoint_dir,
-                         checkpoint_freq=checkpoint_freq)
+                         checkpoint_freq=checkpoint_freq, render=render,
+                         render_freq=render_freq, render_steps=render_steps)
     raise ValueError(f"unsupported algorithm: {cfg.algorithm}")

@@ -117,6 +117,9 @@ def run_experiment(
     evaluate_seeds: list[int] | None = None,
     verbose: bool = True,
     save_plots: bool = True,
+    render: bool = False,
+    render_freq: int = 2048,
+    render_steps: int = 300,
 ) -> dict[str, object]:
     """Train an agent on an environment and persist the full experiment.
 
@@ -133,6 +136,9 @@ def run_experiment(
         evaluate_seeds: Seeds used for the multi-seed robustness evaluation.
         verbose:        Print progress/metrics.
         save_plots:     Write the comparison figure.
+        render:         Periodically live-render the policy while training.
+        render_freq:    Live-render every this many training steps.
+        render_steps:   Samples per live-rendered episode.
 
     Returns:
         A summary dictionary with baseline / RL metrics and the artifact path.
@@ -173,6 +179,9 @@ def run_experiment(
         eval_seed=seeds[0],
         curve=curve,
         best_model_dir=artifacts.dir,
+        render=render,
+        render_freq=render_freq,
+        render_steps=render_steps,
     )
     rl_policy = action_from_model(model)
     rl_metrics = evaluate_episode(make(env_id), rl_policy, seed=seeds[0])

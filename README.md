@@ -109,15 +109,24 @@ python examples/train_and_eval.py --env CavityVoltage-v0
 
 ### Demo (visualization)
 
-A CartPole-style renderer is available on any registered environment. Watch
-the episode live (GUI terminal) or write a PNG on headless machines:
+A CartPole-style renderer is available on any registered environment:
 
 ```bash
-# save a figure (any policy: zero / ff / pi / adrc)
+# live window, frame by frame (GUI terminal) — watch the episode in real time
+python -m llrflibs_rl.scripts.run demo --env CavityVoltage-v0 --policy pi --show
+
+# headless: save a figure (any policy: zero / ff / pi / adrc)
 python -m llrflibs_rl.scripts.run demo --env CavityVoltage-v0 --policy pi --out gallery/demo.png
 
-# interactive window on a GUI terminal
-python -m llrflibs_rl.scripts.run demo --env DualLoop-v0 --policy pi --show
+# watch the agent learn: live-render the growing policy during training
+python -m llrflibs_rl.scripts.run train --env CavityVoltage-v0 --render --render-freq 1024
+```
+
+Or use the self-contained example (works without installing the package):
+
+```bash
+D:\Software\Anaconda\envs\rl\python.exe examples\render_demo.py --live      # watch live
+D:\Software\Anaconda\envs\rl\python.exe examples\render_demo.py              # save PNG
 ```
 
 In Python, wrap any environment with the renderer:
@@ -130,7 +139,7 @@ env = RenderableEnv(rl.make("CavityVoltage-v0"), render_mode="human")
 obs, _ = env.reset(seed=0)
 for _ in range(400):
     obs, _, terminated, truncated, _ = env.step(env.action_space.sample())
-    env.render()
+    env.render()  # human mode streams the figure live on GUI backends
     if terminated or truncated:
         break
 ```

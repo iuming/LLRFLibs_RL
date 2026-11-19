@@ -52,3 +52,45 @@ def test_renderable_env_human_and_attribute_forwarding(fast_cavity, fast_env_con
     assert np.isfinite(abs(complex(env.tracked_signal)))
     assert env.spec is not None
     env.close()
+
+
+def test_live_human_render_is_safe_on_agg(fast_cavity, fast_env_config):
+    from llrflibs_rl.envs.render import RenderableEnv
+
+    env = RenderableEnv(
+        rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config),
+        render_mode="human", pause_sec=0.0,
+    )
+    env.reset(seed=0)
+    for _ in range(10):
+        env.step(np.zeros(2, dtype=np.float32))
+        assert env.render("human") is None  # no window and no pause on Agg
+    env.close()
+
+
+class _FakeModel:
+    """Minimal policy object used by the callback test (no SB3 needed)."""
+
+    num_timesteps = 0
+
+    def predict(self, obs, deterministic: bool = True):
+        return np.zeros(2, dtype=np.float32), None
+
+
+def test_live_render_callback_triggers_periodically(fast_cavity, fast_env_config):
+    from llrflibs_rl.agents.render import LiveRenderCallback
+
+    factory = lambda: rl.make(  # noqa: E731
+        "CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config
+    )
+    callback = LiveRenderCallback(factory, render_freq=4, render_steps=5, pause_sec=0.0)
+    callback.init_callback(_FakeModel())
+    assert callback.rendered_count() == 0
+    for _ in range(3):
+        callback.on_step()
+    assert callback.rendered_count() == 0  # not yet due
+    callback.on_step()  # 4th training step -> live render fires
+    assert callback.rendered_count() == 1
+    for _ in range(4):
+        callback.on_step()
+    assert callback.rendered_count() == 2

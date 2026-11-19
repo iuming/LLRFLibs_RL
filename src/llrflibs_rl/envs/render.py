@@ -61,6 +61,7 @@ class RenderableEnv:
         render_mode: str = "human",
         title: str | None = None,
         max_steps: int = 1500,
+        pause_sec: float = 0.02,
     ) -> None:
         if render_mode not in ("human", "rgb_array"):
             raise ValueError("render_mode must be 'human' or 'rgb_array'.")
@@ -68,6 +69,7 @@ class RenderableEnv:
         self.render_mode = render_mode
         self.title = title or getattr(env, "spec", None) and str(env.spec.env_id)
         self.max_steps = int(max_steps)
+        self.pause_sec = float(pause_sec)
         self._fig = None
         self._ax = None
         self._lines: dict[str, Any] = {}
@@ -203,6 +205,26 @@ class RenderableEnv:
 
         self._fig.tight_layout(rect=(0, 0, 1, 0.96))
 
+    def _live_show(self) -> None:
+        """Push the figure to the screen and give the GUI event loop time.
+
+        On headless (Agg) backends this is a no-op so ``render("human")`` is
+        safe in CI and servers; on GUI backends it opens the window and streams
+        updates in real time, exactly like a control-task ``human`` render.
+        """
+        import matplotlib.pyplot as plt
+
+        backend = plt.get_backend().lower()
+        if "agg" in backend:
+            return
+        if not plt.isinteractive():
+            plt.ion()
+        if not plt.fignum_exists(self._fig.number):
+            self._fig.show()
+        self._fig.canvas.draw()
+        plt.pause(self.pause_sec)
+        self._fig.canvas.flush_events()
+
     def render(self, mode: str | None = None):
         """Render the current episode state.
 
@@ -244,6 +266,7 @@ class RenderableEnv:
             return self._to_rgb_array()
         if mode == "human":
             self._fig.canvas.flush_events()
+            self._live_show()
         return None
 
     def _to_rgb_array(self) -> np.ndarray:

@@ -58,6 +58,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   modes (live multi-panel figure: amplitude / phase tracking, I/Q phasor and
   drive/detuning telemetry); `demo` CLI runs an episode with any baseline and
   saves a PNG (interactive ``--show`` on GUI terminals).
+- **Training-time live rendering** — `render("human")` now streams the figure
+  in real time on GUI backends (per-frame `plt.pause`); `agents.render.LiveRenderCallback`
+  periodically plays the policy being trained in a window (`train --render
+  --render-freq N`); `examples/render_demo.py --live` watches an episode frame by frame.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,
