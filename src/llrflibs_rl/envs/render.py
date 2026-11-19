@@ -542,7 +542,7 @@ class RenderableEnv:
         if "detuning" in self._lines:
             det_hz = np.asarray(self._history["detuning"]) / (2.0 * np.pi)
             self._lines["detuning"].set_data(t, det_hz)
-        for key in ("amp", "phase", "drive"):
+        for key in ("amp", "phase", "drive", "detuning"):
             if key in self._lines:
                 axes = self._lines[key].axes
                 axes.relim()
