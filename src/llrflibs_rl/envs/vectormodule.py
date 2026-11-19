@@ -266,5 +266,5 @@ class VectorSumEnv(BaseLLRFEnv):
         if self.tuner_action:
             reward -= self.env_cfg.tuner_effort_weight * float(np.mean(tuner_cmd**2))
         terminated = False
-        truncated = self._step_index >= self.episode_len
+        truncated = self._episode_ended()
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()

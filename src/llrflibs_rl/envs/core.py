@@ -126,6 +126,21 @@ class BaseLLRFEnv(gym.Env):
         """Rendering is not implemented for the LLRF environments."""
         raise NotImplementedError("LLRF environments do not implement rendering.")
 
+    def _episode_ended(self) -> bool:
+        """True when the episode-count horizon is reached (never in CW mode).
+
+        In ``"cw"`` (continuous-wave) mode the loop is *not* truncated at
+        ``episode_len``: it keeps running at the last operating point until a
+        protective trip terminates it (``terminated``), matching real
+        continuous-wave LLRF operation and the infinite ``max_episode_steps``
+        of the registry spec.
+        """
+        cfg = getattr(self, "env_cfg", None)
+        if cfg is not None and getattr(cfg, "mode", "pulse") == "cw":
+            return False
+        index = getattr(self, "_pulse_index", getattr(self, "_step_index", 0))
+        return int(index) >= int(self.episode_len)
+
     def close(self) -> None:
         """No resources to release."""
         return None

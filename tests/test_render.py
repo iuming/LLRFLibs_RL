@@ -94,3 +94,40 @@ def test_live_render_callback_triggers_periodically(fast_cavity, fast_env_config
     for _ in range(4):
         callback.on_step()
     assert callback.rendered_count() == 2
+
+
+def test_console_layout_renders_and_marker_moves(fast_cavity, fast_env_config):
+    from llrflibs_rl.envs.render import RenderableEnv
+
+    env = RenderableEnv(
+        rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config),
+        render_mode="rgb_array", layout="console",
+    )
+    env.reset(seed=0)
+    action = np.array([1.0, 0.0], dtype=np.float32)
+    env.step(action)
+    env.step(action)
+    frame = env.render("rgb_array")
+    assert frame.ndim == 3 and frame.shape[2] == 3 and frame.dtype == np.uint8
+    x0 = np.asarray(env._marker["dot"].get_xdata())
+    env.step(action)
+    env.step(action)
+    env.render("rgb_array")
+    x1 = np.asarray(env._marker["dot"].get_xdata())
+    assert x0.shape == x1.shape and not np.array_equal(x0, x1)  # the state marker moves
+    assert set(env._pv) >= {"amp", "phase_deg", "detuning_hz", "err_pct", "reward"}  # PV panel present
+    env.close()
+
+
+def test_simple_layout_still_works(fast_cavity, fast_env_config):
+    from llrflibs_rl.envs.render import RenderableEnv
+
+    env = RenderableEnv(
+        rl.make("CavityVoltage-v0", cavity=fast_cavity, env_cfg=fast_env_config),
+        render_mode="rgb_array", layout="simple",
+    )
+    env.reset(seed=0)
+    env.step(np.array([1.0, 0.0], dtype=np.float32))
+    frame = env.render("rgb_array")
+    assert frame.ndim == 3 and frame.dtype == np.uint8
+    env.close()

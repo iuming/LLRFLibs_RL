@@ -62,6 +62,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   in real time on GUI backends (per-frame `plt.pause`); `agents.render.LiveRenderCallback`
   periodically plays the policy being trained in a window (`train --render
   --render-freq N`); `examples/render_demo.py --live` watches an episode frame by frame.
+- **Episode-horizon semantics (`EnvConfig.mode`)** — ``"pulse"`` (default):
+  `spec.max_episode_steps == episode_len` (for the pulse envs this is the
+  N-*pulse-period* adaptation window, one step per pulse); ``"cw"``
+  (continuous-wave): `spec.max_episode_steps is None` (infinite) and the loop
+  is never truncated at the horizon — it only ends on a protective trip,
+  mirroring real CW LLRF operation.  `make()` derives the spec per-instance
+  (the shared registry entry is no longer mutated).
+- **Operator-console render layout** — `RenderableEnv` gains an EPICS
+  CSS/Phoebus-style dashboard (`layout="console"`, default): live numeric
+  PV panel (|Vc|, phase, forward/reflected, detuning, beam, drive, tracking
+  error with alarm colours), waveform trend strips, and a *moving* state
+  marker that drives the phasor trajectory; the old 4-panel layout is kept as
+  `layout="simple"`.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

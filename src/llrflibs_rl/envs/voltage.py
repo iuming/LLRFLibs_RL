@@ -311,7 +311,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         terminated = bool(tripped)
         if tripped:
             reward += float(self.env_cfg.trip_penalty)
-        truncated = self._step_index >= self.episode_len
+        truncated = self._episode_ended()
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()
 
 
@@ -425,7 +425,7 @@ class PIAssistEnv(CavityVoltageEnv):
             slew_excess=slew_excess,
         )
         terminated = False
-        truncated = self._step_index >= self.episode_len
+        truncated = self._episode_ended()
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()
 
 
@@ -551,5 +551,5 @@ class ADRCAssistEnv(CavityVoltageEnv):
             slew_excess=slew_excess,
         )
         terminated = False
-        truncated = self._step_index >= self.episode_len
+        truncated = self._episode_ended()
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()

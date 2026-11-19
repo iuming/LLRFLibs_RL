@@ -362,6 +362,18 @@ class AdaptivePulseEnv(gym.Env):
         self._prev_drive_pen = 0.0
         return self._get_obs(), self._make_info()
 
+    def _episode_ended(self) -> bool:
+        """Pulse-mode horizon check: the adaptation window (``n_pulses``).
+
+        Each step is one pulse, so the episode ends after ``episode_len``
+        pulses (N * pulse period).  CW mode is not meaningful here and is
+        treated as pulse mode.
+        """
+        cfg = getattr(self, "config", None)
+        if cfg is not None and getattr(cfg, "mode", "pulse") == "cw":
+            return False
+        return int(getattr(self, "_pulse_index", 0)) >= int(self.episode_len)
+
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = np.clip(np.asarray(action, dtype=np.float32), -1.0, 1.0).reshape(self.n_basis)
         gains = 1.0 + action * self.config.action_gain_scale
@@ -391,7 +403,7 @@ class AdaptivePulseEnv(gym.Env):
         )
 
         terminated = False
-        truncated = self._pulse_index >= self.episode_len
+        truncated = self._episode_ended()
         return self._get_obs(), float(reward), terminated, truncated, self._make_info()
 
     # ------------------------------------------------------------------

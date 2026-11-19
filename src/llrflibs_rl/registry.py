@@ -15,7 +15,7 @@ single ``make("DualLoop-v0")`` returns a runnable environment.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import gymnasium as gym
@@ -152,13 +152,21 @@ def make(
         A new environment instance (possibly wrapped).
     """
     spec = get_spec(env_id)
+    # Copy the spec so the env-derived horizon never mutates the shared
+    # registry entry (each ``make`` gets its own derived ``max_episode_steps``).
+    spec = replace(spec)
     kwargs = _default_kwargs_for(env_id)
     kwargs.update(overrides)
     env = spec.entry(**kwargs)
     env._spec = spec  # type: ignore[attr-defined]
     # Gymnasium parity: expose the episode horizon on the spec.
+    #  * pulse mode -> ``episode_len`` samples (for the pulse envs this is the
+    #    N-*pulse period* adaptation window, one step per pulse);
+    #  * cw mode    -> ``None`` (infinite: the loop only ends on a protective
+    #    trip, mirroring continuous-wave LLRF operation).
     if spec.max_episode_steps is None and hasattr(env, "episode_len"):
-        spec.max_episode_steps = int(env.episode_len)
+        mode = getattr(getattr(env, "env_cfg", None), "mode", "pulse")
+        spec.max_episode_steps = None if mode == "cw" else int(env.episode_len)
     wrapped = env
     for wrapper in wrappers or []:
         wrapped = wrapper(wrapped)

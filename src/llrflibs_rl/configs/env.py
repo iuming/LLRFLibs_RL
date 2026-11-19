@@ -69,6 +69,11 @@ class EnvConfig:
                      the quench detector, V/s.
         quench_abs_threshold:      Optional absolute reflected level floor of the
                      quench detector, V.
+        mode:                    ``"pulse"`` (default): one episode is
+                     ``episode_len`` samples and is truncated at the horizon;
+                     ``"cw"`` (continuous-wave): the episode is not truncated at
+                     ``episode_len`` and ``spec.max_episode_steps`` is ``None``
+                     (infinite) — the loop only ends on a protective trip.
         seed:                    Base random seed (the np_random is derived from it).
     """
 
@@ -89,6 +94,7 @@ class EnvConfig:
     quench_detect: bool = False
     quench_rate_threshold: float = 1.0e6
     quench_abs_threshold: float | None = None
+    mode: str = "pulse"
     seed: int = 0
     microphonics_psd: MicrophonicsProfile | None = None
 
@@ -118,6 +124,8 @@ class EnvConfig:
             raise ValueError("reflected_power_trip_steps must be positive.")
         if self.half_bw_drift_frac < 0:
             raise ValueError("half_bw_drift_frac must be non-negative.")
+        if self.mode not in ("pulse", "cw"):
+            raise ValueError("mode must be 'pulse' or 'cw'.")
 
     def __post_init__(self) -> None:
         self.validate()
