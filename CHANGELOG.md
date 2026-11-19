@@ -83,6 +83,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and the zero-disturbance, zero-residual flattop tracking error drops from
   ~0.28 % to ~0.03 %.  `nominal_nc_cavity` gets the same canonical
   bandwidth fix.
+- **mech2-style physics example** — `examples/sim_cavity_mech_scan.py` ports
+  ``LLRFLibsPy/example/example_sim_cavity_mech2.py``: open-loop RF chain
+  (source -> I/Q -> amplifier) driving a cavity with beam, microphonics and
+  multi-mode mechanical detuning; draws the classic |Vc| / phase / detuning
+  three-panel view plus the internal I/Q traces (`--out` headless,
+  `--show` interactive).  README documents the four renderer panels.
 
 ### Changed
 - `EnvConfig` gained the additive `microphonics_psd` field (default `None`,

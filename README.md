@@ -144,6 +144,38 @@ for _ in range(400):
         break
 ```
 
+#### What the four console panels mean
+
+The console view (`layout="console"`, dark EPICS-style) shows:
+
+| panel | what it plots | how to read it |
+|---|---|---|
+| **Amplitude \|Vc\|** (left-top) | cavity voltage magnitude vs time, with the setpoint (dashed) | cyan curve must ride the dashed reference; gap = tracking error |
+| **Phase** (right-top) | cavity phase in degrees vs time, reference dashed | flattop should be flat at the reference phase |
+| **Phasor plane** (left-bottom) | I/Q trajectory of the cavity state; blue dot = current state, star = setpoint | like a car on a road: the dot drives along the trajectory toward the star |
+| **Drive / Reflected vs Detuning** (right-bottom) | \|drive\| and \|reflected\| (left axis), detuning in Hz (right axis, purple) | loading, reflected-power margin and detuning dynamics at a glance |
+
+The **left PV panel** is the numeric readout column (|Vc|, phase, forward,
+reflected, detuning, beam, tracking error, reward) — engineers who are used to
+CSS/Phoebus will recognize it.
+
+#### LLRFLibsPy-style physics plots (`mech2` port)
+
+Prefer the plain "three-stacked-panels" view of `example_sim_cavity_mech2.py`?
+A faithful port is included:
+
+```bash
+# headless: saves gallery/mech_scan.png (|Vc| MV / phase deg / detuning Hz)
+D:/Software/Anaconda/envs/rl/python.exe examples/sim_cavity_mech_scan.py --out gallery/mech_scan.png
+# interactive window
+D:/Software/Anaconda/envs/rl/python.exe examples/sim_cavity_mech_scan.py --show
+```
+
+It simulates the full open-loop RF chain (RF source -> I/Q modulator ->
+amplifier -> cavity) with beam current, microphonics and the multi-mode
+mechanical (Lorentz) detuning of the canonical 1.3 GHz SC cavity, and prints
+the flattop voltage and the detuning statistics.
+
 ## Classical baselines
 
 Every training run compares RL against a classical controller selected with
