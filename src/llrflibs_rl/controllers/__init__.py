@@ -21,20 +21,29 @@ from .baselines import (
 )
 from .feedback import ADRCController, ComplexPIController
 from .feedforward import AnalyticFeedforward, PTypeILC
+from .ilc import AdaptiveFeedforward, ILCFeedforward, design_ilc_gain, impulse_response_matrix
+from .notch import NotchFilter, notch_conf_for_frequencies, notch_filter_wave
 from .resonance import FirstOrderActuator, ZeroActuator
 
 __all__ = [
     "ADRCController",
+    "AdaptiveFeedforward",
     "AnalyticFeedforward",
     "BASELINE_NAMES",
     "ComplexPIController",
     "FirstOrderActuator",
+    "ILCFeedforward",
+    "NotchFilter",
     "PTypeILC",
     "ZeroActuator",
+    "design_ilc_gain",
+    "impulse_response_matrix",
     "list_baselines",
     "make_adrc_like_policy",
     "make_baseline_policy",
     "make_detuning_pi_policy",
     "make_pi_residual_policy",
+    "notch_conf_for_frequencies",
+    "notch_filter_wave",
     "zero_policy",
 ]

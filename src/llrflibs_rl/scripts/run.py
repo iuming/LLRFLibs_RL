@@ -100,6 +100,27 @@ def _parser() -> argparse.ArgumentParser:
     z_latest.add_argument("--env", required=True)
     z_latest.add_argument("--zoo-dir", type=str, default=None)
     z_latest.set_defaults(func=_cmd_zoo_latest)
+
+    p_sysid = sub.add_parser("sysid", help="identify cavity parameters of a simulated plant")
+    p_sysid.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_sysid.add_argument("--n-prbs", type=int, default=2048)
+    p_sysid.set_defaults(func=_cmd_sysid)
+
+    p_calib = sub.add_parser("calib", help="virtual-probe / forward calibration on a simulated plant")
+    p_calib.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_calib.set_defaults(func=_cmd_calib)
+
+    p_loop = sub.add_parser("loop", help="loop stability margins of a cavity + PI controller")
+    p_loop.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_loop.add_argument("--delay-us", type=float, default=0.0,
+                        help="loop transport delay in microseconds")
+    p_loop.set_defaults(func=_cmd_loop)
+
+    p_spec = sub.add_parser("spectrum", help="PSD of the tracking error of the baseline policy")
+    p_spec.add_argument("--env", type=str, default="CavityVoltage-v0")
+    p_spec.add_argument("--bands", type=str, default=None,
+                        help="comma-separated f1-f2 bands for band RMS (e.g. '20-100,100-500')")
+    p_spec.set_defaults(func=_cmd_spectrum)
     return parser
 
 
@@ -282,6 +303,94 @@ def _cmd_zoo_latest(args: argparse.Namespace) -> None:
         return
     meta = zoo.metadata(args.env)
     print(meta or f"loaded {args.env} model")
+
+
+def _cmd_sysid(args: argparse.Namespace) -> None:
+    from ..plants.sysid import identify_cavity
+
+    env = make(args.env)
+    report = identify_cavity(env.cavity, env.env_cfg.Ts, n_prbs=args.n_prbs)
+    print_header("System identification of the simulated cavity plant")
+    print(f"{'quantity':<24}{'identified':>18}{'truth':>18}{'rel. error':>14}")
+    for name, ident, truth, err in (
+        ("half bandwidth (rad/s)", report.half_bw_identified, report.half_bw_truth, report.half_bw_rel_error),
+        ("detuning (rad/s)", report.detuning_identified, report.detuning_truth, report.detuning_rel_error),
+        ("beam amplitude (V)", report.beam_amp_identified, report.beam_amp_truth, report.beam_rel_error),
+    ):
+        print(f"{name:<24}{ident:>18.4e}{truth:>18.4e}{err:>13.2%}")
+
+
+def _cmd_calib(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from ..utils.calibration import calibrate_forward_coefficient, calibrate_virtual_probe
+
+    env = make(args.env)
+    plant = env.plant
+    n = 600
+    drive = np.full(n, 1.0e7, dtype=np.complex128)
+    vc = np.zeros(n, dtype=np.complex128)
+    vf_m = drive.copy()
+    vr_m = np.zeros(n, dtype=np.complex128)
+    plant.reset()
+    for i in range(n):
+        vc[i], vr_m[i] = plant.step(complex(drive[i]))
+    m, n_coeff = calibrate_virtual_probe(vc, vf_m, vr_m)
+    half_bw = env.cavity.half_bw
+    detuning = env.env_cfg.randomize_detuning * 0.0 + env.cavity.detuning
+    a = calibrate_forward_coefficient(vc, vf_m, 50, 500, half_bw, detuning, env.env_cfg.Ts)
+    print_header("Virtual-probe / forward calibration (simulated plant)")
+    print(
+        "virtual probe:  "
+        f"vc ~= ({m.real:.4e} + {m.imag:.4e}j) * vf_m + ({n_coeff.real:.4e} + {n_coeff.imag:.4e}j) * vr_m"
+    )
+    print(f"forward coeff:  vf = ({a.real:.4e} + {a.imag:.4e}j) * vf_m")
+
+
+def _cmd_loop(args: argparse.Namespace) -> None:
+    from llrflibs.rf_sim import cav_ss
+
+    from ..configs.controller import PIControllerConfig
+    from ..evaluation.loop import loop_margins, pi_controller_abcd
+
+    env = make(args.env)
+    cavity = env.cavity
+    detuning = env.env_cfg.randomize_detuning * 0.0 + env.cavity.detuning
+    ok, arf, brf, crf, drf, *_ = cav_ss(
+        cavity.half_bw, detuning=detuning, beta=cavity.beta, passband_modes=cavity.passband_modes, plot=False
+    )
+    if not ok:
+        raise SystemExit("cav_ss failed")
+    # A representative PI inner loop matching the environment's default gains.
+    pi_cfg = PIControllerConfig()
+    ctrl = pi_controller_abcd(pi_cfg.kp, pi_cfg.ki, notch_conf=pi_cfg.notch_conf)
+    report = loop_margins(
+        (arf, brf, crf, drf), ctrl, Ts=None, delay_s=args.delay_us * 1e-6, plot_maxf=2.0e6
+    )
+    print_header("Loop stability margins (cavity + PI)")
+    for key, value in report.as_dict().items():
+        text = f"{value:.3f}" if value is not None else "inf"
+        print(f"{key:<18}: {text}")
+
+
+def _cmd_spectrum(args: argparse.Namespace) -> None:
+    from ..controllers.baselines import make_baseline_policy
+    from ..evaluation.spectral import tracking_error_spectrum
+
+    env = make(args.env)
+    policy = make_baseline_policy(env, "zero")
+    bands = None
+    if args.bands:
+        bands = [tuple(float(x) for x in b.split("-")) for b in args.bands.split(",") if "-" in b]
+    report = tracking_error_spectrum(lambda: make(args.env), policy, seed=0, bands=bands)
+    print_header("Tracking-error spectrum (baseline policy)")
+    print(
+        "dominant error @ "
+        f"{report.signal_freq_hz:.1f} Hz  ({report.signal_mag_db:.1f} dB, snr {report.snr_db:.1f} dB)"
+    )
+    print(f"overall error RMS  : {report.error_rms:.4e}")
+    for band in report.bands:
+        print(f"band {band.f_start:>8.1f}-{band.f_end:<8.1f} Hz : {band.rms:.4e}")
 
 
 def main(argv: list[str] | None = None) -> None:

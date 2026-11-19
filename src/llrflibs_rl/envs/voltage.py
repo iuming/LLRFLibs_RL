@@ -108,7 +108,13 @@ class CavityVoltageEnv(BaseLLRFEnv):
         return detuning
 
     def _build_detuning_wave(self, detuning: float) -> None:
-        if self.env_cfg.microphonics_amp > 0.0:
+        if self.env_cfg.microphonics_psd is not None:
+            # Realistic PSD-driven microphonics replaces the single sine tone.
+            wave = self.env_cfg.microphonics_psd.sample(
+                fs=1.0 / float(self.env_cfg.Ts), n_samples=self.episode_len
+            )
+            self._detuning_wave = float(detuning) + wave
+        elif self.env_cfg.microphonics_amp > 0.0:
             phase = (
                 float(self.np_random.uniform(0.0, 2.0 * np.pi))
                 if self.env_cfg.microphonics_random_phase

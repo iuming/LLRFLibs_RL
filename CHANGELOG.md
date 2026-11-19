@@ -18,6 +18,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   against `stable_baselines3.common.evaluation.evaluate_policy`.
 - GitHub Actions CI workflow (`pytest` + `verify` + `ruff`), console script
   entry points, and this changelog.
+- **Science-toolkit layer** integrating the remaining ``llrflibs`` physics
+  modules into the RL package:
+  - `plants/noise` — PSD-driven microphonics (`MicrophonicsProfile`,
+    `typical_cryomodule_microphonics`) wired into the voltage environments via
+    `EnvConfig.microphonics_psd` (replaces the single-sine model).
+  - `controllers/notch` — state-space notch filter + `notch_conf_for_frequencies`
+    helper for `PIControllerConfig.notch_conf`.
+  - `controllers/ilc` — adaptive feedforward (`AdaptiveFeedforward`) and optimal
+    frequency-domain ILC (`ILCFeedforward`, SVD/LS response inversion) as
+    classical baselines for the pulse-to-pulse environments.
+  - `plants/sysid` — PRBS/ETFE transfer-function estimation, decay-based
+    half-bw/detuning identification and the ADRC beam-loading observer
+    (`identify_cavity` pipeline; `sysid` CLI).
+  - `utils/calibration` — virtual probe, forward coefficient, DAC offset,
+    I/Q modulator, vector-sum and system gain/phase calibration (`calib` CLI).
+  - `plants/measurement` — demodulators, I/Q<->A/P conversion and a
+    delay+noise `MeasurementChain` for front-end realism.
+  - `evaluation/loop` — loop-stability margins (gain/phase margin, S_max/T_max)
+    of a cavity + PI loop (`loop` CLI).
+  - `evaluation/spectral` — tracking-error PSD and band-RMS analysis
+    (`spectrum` CLI).
+
+### Changed
+- `EnvConfig` gained the additive `microphonics_psd` field (default `None`,
+  behaviour unchanged).
+- Deprecated `typing.Dict/List/Optional/Tuple` annotations modernized to
+  `dict/list/... | None` / `tuple` across the package (ruff UP rules).
 
 ## [0.3.0] — 2026-11-19
 

@@ -18,3 +18,8 @@ models/
 .ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+
+# tool artifacts
+.playwright-mcp/
+literature/
+docs/benchmark-results/

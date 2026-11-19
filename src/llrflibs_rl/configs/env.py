@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from ..plants.noise import MicrophonicsProfile
 from .cavity import CavityParams
 
 __all__ = [
@@ -49,6 +50,10 @@ class EnvConfig:
         microphonics_freq:       Frequency of the intra-pulse detuning
                      modulation, Hz.
         microphonics_random_phase: Randomize the microphonics phase each reset.
+        microphonics_psd:        Optional :class:`MicrophonicsProfile` with a
+                     realistic detuning PSD. When set it replaces the single
+                     sine microphonics (``microphonics_amp``) with a full PSD
+                     realization.
         reflected_power_limit:     Optional reflected-voltage threshold, V;
                      exceeding it for ``reflected_power_trip_steps`` consecutive
                      samples ends the episode (quench-like protective trip).
@@ -76,6 +81,7 @@ class EnvConfig:
     trip_penalty: float = 0.0
     half_bw_drift_frac: float = 0.0
     seed: int = 0
+    microphonics_psd: MicrophonicsProfile | None = None
 
     def validate(self) -> None:
         """Raise on inconsistent configuration."""
