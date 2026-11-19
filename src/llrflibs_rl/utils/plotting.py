@@ -15,7 +15,6 @@ error-metric panels, the training-convergence curve and a summary text panel.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import matplotlib
 
@@ -31,13 +30,13 @@ __all__ = [
 ]
 
 
-def _plot_curve_data(curve: Optional[List[Dict[str, float]]]):
+def _plot_curve_data(curve: list[dict[str, float]] | None):
     if curve:
         return [float(p["timesteps"]) for p in curve], [float(p["reward"]) for p in curve]
     return None
 
 
-def _tracking_errors(env, wave: np.ndarray) -> Dict[str, float]:
+def _tracking_errors(env, wave: np.ndarray) -> dict[str, float]:
     """Return (whole-pulse, flattop) RMS errors in % of the voltage target."""
     sp = np.asarray(env.reference_sp[: len(wave)], dtype=np.complex128)
     error = sp - wave
@@ -69,10 +68,10 @@ def _finish_and_save(fig, axes, path: Path) -> None:
 
 def plot_tracking(
     env,
-    baseline: Dict[str, np.ndarray],
-    rl: Dict[str, np.ndarray],
+    baseline: dict[str, np.ndarray],
+    rl: dict[str, np.ndarray],
     baseline_name: str,
-    curve: Optional[List[Dict[str, float]]],
+    curve: list[dict[str, float]] | None,
     path: Path,
 ) -> None:
     """Amplitude / phase / drive / error-metrics / convergence for voltage-like scenarios."""
@@ -149,10 +148,10 @@ def plot_tracking(
 
 def plot_resonance(
     env,
-    baseline: Dict[str, np.ndarray],
-    rl: Dict[str, np.ndarray],
+    baseline: dict[str, np.ndarray],
+    rl: dict[str, np.ndarray],
     baseline_name: str,
-    curve: Optional[List[Dict[str, float]]],
+    curve: list[dict[str, float]] | None,
     path: Path,
 ) -> None:
     """Detuning / actuator / amplitude / convergence for resonance scenarios."""
@@ -222,10 +221,10 @@ def plot_resonance(
 
 def plot_adaptive_pulse(
     env,
-    baseline: Dict[str, np.ndarray],
-    rl: Dict[str, np.ndarray],
+    baseline: dict[str, np.ndarray],
+    rl: dict[str, np.ndarray],
     baseline_name: str,
-    curve: Optional[List[Dict[str, float]]],
+    curve: list[dict[str, float]] | None,
     path: Path,
 ) -> None:
     """Per-pulse reward/error and convergence for the pulse-level scenario."""
@@ -275,10 +274,10 @@ def plot_adaptive_pulse(
 
 def plot_comparison(
     env,
-    baseline: Dict[str, np.ndarray],
-    rl: Dict[str, np.ndarray],
+    baseline: dict[str, np.ndarray],
+    rl: dict[str, np.ndarray],
     baseline_name: str,
-    curve: Optional[List[Dict[str, float]]],
+    curve: list[dict[str, float]] | None,
     path: Path,
 ) -> None:
     """Render the right comparison figure for an environment.

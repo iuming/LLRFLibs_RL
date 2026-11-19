@@ -15,14 +15,13 @@ Evaluation lives in :mod:`llrflibs_rl.evaluation`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
+import numpy as np
 from stable_baselines3 import PPO, SAC, TD3
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-
-import numpy as np
 
 from ..configs.agent import AgentConfig
 
@@ -59,8 +58,8 @@ class EvalCurveCallback(BaseCallback):
         eval_env_factory: Callable,
         eval_freq: int = 2048,
         eval_seed: int = 0,
-        eval_steps: Optional[int] = None,
-        curve: Optional[List[Dict[str, float]]] = None,
+        eval_steps: int | None = None,
+        curve: list[dict[str, float]] | None = None,
         verbose: int = 0,
     ) -> None:
         super().__init__(verbose=verbose)
@@ -146,7 +145,7 @@ def make_training_vec_env(env_factory: Callable, cfg: AgentConfig):
     return vec_env
 
 
-def _attach_curve(model, curve: Optional[List[Dict[str, float]]]) -> None:
+def _attach_curve(model, curve: list[dict[str, float]] | None) -> None:
     """Attach the evaluation curve list to a model for later plotting."""
     if curve is None:
         curve = []
@@ -155,11 +154,11 @@ def _attach_curve(model, curve: Optional[List[Dict[str, float]]]) -> None:
 
 def _eval_callback(
     model,
-    eval_env_factory: Optional[Callable],
+    eval_env_factory: Callable | None,
     eval_freq: int,
     eval_seed: int,
-    curve: Optional[List[Dict[str, float]]],
-) -> Optional[EvalCurveCallback]:
+    curve: list[dict[str, float]] | None,
+) -> EvalCurveCallback | None:
     if eval_env_factory is None:
         return None
     return EvalCurveCallback(
@@ -168,9 +167,9 @@ def _eval_callback(
 
 
 def _best_model_callback(
-    eval_env_factory: Optional[Callable],
+    eval_env_factory: Callable | None,
     eval_freq: int,
-    best_model_dir: Optional[Path],
+    best_model_dir: Path | None,
     cfg: AgentConfig,
 ):
     """SB3 ``EvalCallback`` that saves the best model into ``best_model_dir``."""
@@ -191,8 +190,8 @@ def _best_model_callback(
 
 
 def _checkpoint_callback(
-    checkpoint_dir: Optional[Path],
-    checkpoint_freq: Optional[int],
+    checkpoint_dir: Path | None,
+    checkpoint_freq: int | None,
 ):
     """SB3 ``CheckpointCallback`` that periodically saves model + VecNormalize."""
     if checkpoint_dir is None or not checkpoint_freq or checkpoint_freq <= 0:
@@ -209,13 +208,13 @@ def _checkpoint_callback(
 
 def _collect_callbacks(
     cfg: AgentConfig,
-    eval_env_factory: Optional[Callable],
+    eval_env_factory: Callable | None,
     eval_freq: int,
     eval_seed: int,
-    curve: Optional[List[Dict[str, float]]],
-    best_model_dir: Optional[Path],
-    checkpoint_dir: Optional[Path],
-    checkpoint_freq: Optional[int],
+    curve: list[dict[str, float]] | None,
+    best_model_dir: Path | None,
+    checkpoint_dir: Path | None,
+    checkpoint_freq: int | None,
 ):
     """Assemble the training callbacks (curve, best-model, checkpoints)."""
     callbacks = []
@@ -236,15 +235,15 @@ def _train(
     env_factory: Callable,
     cfg: AgentConfig,
     algorithm_cls,
-    algorithm_kwargs: Dict[str, object],
+    algorithm_kwargs: dict[str, object],
     *,
-    eval_env_factory: Optional[Callable],
+    eval_env_factory: Callable | None,
     eval_freq: int,
     eval_seed: int,
-    curve: Optional[List[Dict[str, float]]],
-    best_model_dir: Optional[Path],
-    checkpoint_dir: Optional[Path],
-    checkpoint_freq: Optional[int],
+    curve: list[dict[str, float]] | None,
+    best_model_dir: Path | None,
+    checkpoint_dir: Path | None,
+    checkpoint_freq: int | None,
 ):
     """Shared training loop body used by every algorithm wrapper.
 
@@ -285,13 +284,13 @@ def _train(
 def _standard_params(
     env_factory: Callable,
     cfg: AgentConfig,
-    eval_env_factory: Optional[Callable],
+    eval_env_factory: Callable | None,
     eval_freq: int,
     eval_seed: int,
-    curve: Optional[List[Dict[str, float]]],
-    best_model_dir: Optional[Path],
-    checkpoint_dir: Optional[Path],
-    checkpoint_freq: Optional[int],
+    curve: list[dict[str, float]] | None,
+    best_model_dir: Path | None,
+    checkpoint_dir: Path | None,
+    checkpoint_freq: int | None,
 ):
     return dict(
         env_factory=env_factory, cfg=cfg,
@@ -305,13 +304,13 @@ def train_ppo(
     env_factory: Callable,
     cfg: AgentConfig,
     *,
-    eval_env_factory: Optional[Callable] = None,
+    eval_env_factory: Callable | None = None,
     eval_freq: int = 2048,
     eval_seed: int = 0,
-    curve: Optional[List[Dict[str, float]]] = None,
-    best_model_dir: Optional[Path] = None,
-    checkpoint_dir: Optional[Path] = None,
-    checkpoint_freq: Optional[int] = None,
+    curve: list[dict[str, float]] | None = None,
+    best_model_dir: Path | None = None,
+    checkpoint_dir: Path | None = None,
+    checkpoint_freq: int | None = None,
 ):
     """Train a PPO policy.
 
@@ -349,13 +348,13 @@ def train_sac(
     env_factory: Callable,
     cfg: AgentConfig,
     *,
-    eval_env_factory: Optional[Callable] = None,
+    eval_env_factory: Callable | None = None,
     eval_freq: int = 2048,
     eval_seed: int = 0,
-    curve: Optional[List[Dict[str, float]]] = None,
-    best_model_dir: Optional[Path] = None,
-    checkpoint_dir: Optional[Path] = None,
-    checkpoint_freq: Optional[int] = None,
+    curve: list[dict[str, float]] | None = None,
+    best_model_dir: Path | None = None,
+    checkpoint_dir: Path | None = None,
+    checkpoint_freq: int | None = None,
 ):
     """Train a SAC policy (parameters as in :func:`train_ppo`)."""
     params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
@@ -377,13 +376,13 @@ def train_td3(
     env_factory: Callable,
     cfg: AgentConfig,
     *,
-    eval_env_factory: Optional[Callable] = None,
+    eval_env_factory: Callable | None = None,
     eval_freq: int = 2048,
     eval_seed: int = 0,
-    curve: Optional[List[Dict[str, float]]] = None,
-    best_model_dir: Optional[Path] = None,
-    checkpoint_dir: Optional[Path] = None,
-    checkpoint_freq: Optional[int] = None,
+    curve: list[dict[str, float]] | None = None,
+    best_model_dir: Path | None = None,
+    checkpoint_dir: Path | None = None,
+    checkpoint_freq: int | None = None,
 ):
     """Train a TD3 policy (parameters as in :func:`train_ppo`)."""
     params = _standard_params(env_factory, cfg, eval_env_factory, eval_freq, eval_seed,
@@ -405,13 +404,13 @@ def train(
     env_factory: Callable,
     cfg: AgentConfig,
     *,
-    eval_env_factory: Optional[Callable] = None,
+    eval_env_factory: Callable | None = None,
     eval_freq: int = 2048,
     eval_seed: int = 0,
-    curve: Optional[List[Dict[str, float]]] = None,
-    best_model_dir: Optional[Path] = None,
-    checkpoint_dir: Optional[Path] = None,
-    checkpoint_freq: Optional[int] = None,
+    curve: list[dict[str, float]] | None = None,
+    best_model_dir: Path | None = None,
+    checkpoint_dir: Path | None = None,
+    checkpoint_freq: int | None = None,
 ):
     """Train an agent using the algorithm selected in the configuration.
 

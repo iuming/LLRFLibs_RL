@@ -15,10 +15,9 @@ actuator + microphonics) is supplied by the caller, while the mechanical
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
-
 from llrflibs.rf_control import ss_discrete
 from llrflibs.rf_sim import cav_ss_mech, sim_scav_step
 
@@ -27,7 +26,7 @@ from ..configs.cavity import CavityParams
 __all__ = ["ResonancePlant", "DEFAULT_MECH_MODES"]
 
 
-DEFAULT_MECH_MODES: Dict[str, List[float]] = {
+DEFAULT_MECH_MODES: dict[str, list[float]] = {
     "f": [280.0, 341.0, 460.0, 487.0, 618.0],
     "Q": [40.0, 20.0, 50.0, 80.0, 100.0],
     "K": [2.0, 0.8, 2.0, 0.6, 0.2],
@@ -52,7 +51,7 @@ class ResonancePlant:
         self,
         cavity: CavityParams,
         Ts: float,
-        mech_modes: Optional[Dict[str, Sequence[float]]] = None,
+        mech_modes: dict[str, Sequence[float]] | None = None,
     ) -> None:
         self.cavity = cavity
         self.Ts = float(Ts)
@@ -85,7 +84,7 @@ class ResonancePlant:
         drive: complex,
         beam: complex,
         external_detuning: float,
-    ) -> Tuple[complex, complex, float]:
+    ) -> tuple[complex, complex, float]:
         """Advance the electrical + mechanical system by one sample.
 
         Args:

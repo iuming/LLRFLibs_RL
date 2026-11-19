@@ -14,8 +14,6 @@ an environment.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 
 __all__ = [
@@ -26,7 +24,7 @@ __all__ = [
 ]
 
 
-def clip_complex_abs(value: complex, limit: Optional[float]) -> complex:
+def clip_complex_abs(value: complex, limit: float | None) -> complex:
     """Clip the magnitude of a complex value.
 
     Args:
@@ -44,7 +42,7 @@ def clip_complex_abs(value: complex, limit: Optional[float]) -> complex:
     return value * (limit / mag)
 
 
-def apply_complex_slew(value: complex, prev_value: complex, max_step: Optional[float]) -> complex:
+def apply_complex_slew(value: complex, prev_value: complex, max_step: float | None) -> complex:
     """Limit the per-step variation of a complex quantity.
 
     Args:
@@ -67,9 +65,9 @@ def apply_complex_slew(value: complex, prev_value: complex, max_step: Optional[f
 def apply_drive_limits(
     drive: complex,
     prev_drive: complex,
-    max_abs: Optional[float],
-    max_slew: Optional[float],
-) -> Tuple[complex, float, float]:
+    max_abs: float | None,
+    max_slew: float | None,
+) -> tuple[complex, float, float]:
     """Apply saturation and slew-rate limits to a drive-sample command.
 
     The returned excesses are bounded to ``[0, 1]`` so that the reward term

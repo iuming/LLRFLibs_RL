@@ -13,7 +13,7 @@ reward normalization) can be added here without touching the environments.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -44,9 +44,9 @@ class EpisodicMonitor(gym.Wrapper[np.ndarray, np.ndarray, float, Any]):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         self._reset()
         return self.env.reset(seed=seed, options=options)
 

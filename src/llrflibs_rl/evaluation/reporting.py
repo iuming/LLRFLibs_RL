@@ -15,16 +15,16 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, List, Sequence
 
 __all__ = ["write_results_json", "write_markdown_table"]
 
 
 def write_results_json(
-    results: Dict[str, object],
+    results: dict[str, object],
     path: Path,
-    extra: Dict[str, object] | None = None,
+    extra: dict[str, object] | None = None,
 ) -> Path:
     """Write a results dictionary as JSON.
 
@@ -36,7 +36,7 @@ def write_results_json(
     Returns:
         The written path.
     """
-    payload: Dict[str, object] = dict(results)
+    payload: dict[str, object] = dict(results)
     if extra:
         payload["meta"] = extra
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -52,7 +52,7 @@ def _format_value(value) -> str:
 
 
 def write_markdown_table(
-    rows: Sequence[Dict[str, object]],
+    rows: Sequence[dict[str, object]],
     path: Path,
     columns: Sequence[str] | None = None,
     title: str = "Results",

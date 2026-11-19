@@ -14,12 +14,12 @@ single ``make("DualLoop-v0")`` returns a runnable environment.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
-
-import numpy as np
+from typing import Any
 
 import gymnasium as gym
+import numpy as np
 
 from .configs import (
     ADRCControllerConfig,
@@ -54,8 +54,8 @@ class EnvSpec:
     description: str
     entry: Callable[..., gym.Env]
     kind: str
-    default_kwargs: Dict[str, Any] = field(default_factory=dict)
-    max_episode_steps: Optional[int] = None
+    default_kwargs: dict[str, Any] = field(default_factory=dict)
+    max_episode_steps: int | None = None
     nondeterministic: bool = False
 
     @property
@@ -72,7 +72,7 @@ class EnvSpec:
         return env
 
 
-_REGISTRY: Dict[str, EnvSpec] = {}
+_REGISTRY: dict[str, EnvSpec] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def register(
     entry: Callable[..., gym.Env],
     description: str = "",
     kind: str = "",
-    max_episode_steps: Optional[int] = None,
+    max_episode_steps: int | None = None,
     **default_kwargs: Any,
 ) -> None:
     """Register an environment by id.
@@ -128,14 +128,14 @@ def get_spec(env_id: str) -> EnvSpec:
         raise KeyError(f"unknown environment id {env_id!r}; registered ids: {valid}") from None
 
 
-def list_env_ids() -> List[str]:
+def list_env_ids() -> list[str]:
     """Return the sorted ids of all registered environments."""
     return sorted(_REGISTRY)
 
 
 def make(
     env_id: str,
-    wrappers: Optional[List[Callable[[gym.Env], gym.Env]]] = None,
+    wrappers: list[Callable[[gym.Env], gym.Env]] | None = None,
     **overrides: Any,
 ) -> gym.Env:
     """Instantiate a registered environment.
@@ -169,26 +169,16 @@ def make(
 # Default construction presets per environment id
 # ---------------------------------------------------------------------------
 
-def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
+def _default_kwargs_for(env_id: str) -> dict[str, Any]:
     """Build the default constructor arguments of an environment (lazily).
 
     The configuration objects of the Level-L4 environments import the env
     classes, so they are imported here instead of at module scope to avoid a
     circular import with ``llrflibs_rl.envs``.
     """
-    from .configs import (
-        ADRCControllerConfig,
-        DualLoopEnvConfig,
-        FrequencyEnvConfig,
-        PIControllerConfig,
-        ResidualEnvConfig,
-        RewardConfig,
-        VectorSumEnvConfig,
-        nominal_sc_cavity,
-    )
 
     vs_cavities = [nominal_sc_cavity() for _ in range(3)]
-    table: Dict[str, Dict[str, Any]] = {
+    table: dict[str, dict[str, Any]] = {
         "CavityVoltage-v0": {
             "cavity": nominal_sc_cavity(),
             "env_cfg": ResidualEnvConfig(episode_len=1500, microphonics_random_phase=True),
@@ -228,7 +218,7 @@ def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
     from .envs.gain_scheduling import GainSchedulingConfig
     from .envs.pulse_to_pulse import AdaptivePulseConfig, BeamLoadingConfig
 
-    l4: Dict[str, Dict[str, Any]] = {
+    l4: dict[str, dict[str, Any]] = {
         "BeamLoading-v0": {
             "cavity": nominal_sc_cavity(),
             "env_cfg": BeamLoadingConfig(episode_len=1500, microphonics_random_phase=True),
@@ -257,7 +247,7 @@ def _default_kwargs_for(env_id: str) -> Dict[str, Any]:
 
     # Short-horizon resolution variants (v1 series). Episode length stays
     # above filling+flattop (1130 samples) of the nominal cavity.
-    v1: Dict[str, Dict[str, Any]] = {
+    v1: dict[str, dict[str, Any]] = {
         "CavityVoltage-v1": {
             "cavity": nominal_sc_cavity(),
             "env_cfg": ResidualEnvConfig(episode_len=1400, microphonics_random_phase=True),

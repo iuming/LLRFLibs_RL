@@ -17,8 +17,8 @@ Both the CLI and the example scripts are thin front-ends on
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -45,7 +45,7 @@ def zero_action(env) -> Callable[[np.ndarray], np.ndarray]:
 # Rollout helpers
 # ---------------------------------------------------------------------------
 
-def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: int = 0) -> Dict[str, np.ndarray]:
+def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: int = 0) -> dict[str, np.ndarray]:
     """Roll out one episode and record the physical waveforms.
 
     Args:
@@ -65,9 +65,9 @@ def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: in
     detuning = np.zeros(n, dtype=float)
     actuator = np.zeros(n, dtype=float)
     disturbance = np.zeros(n, dtype=float)
-    per_cavity_history: List[List[complex]] = []
+    per_cavity_history: list[list[complex]] = []
 
-    rewards: List[float] = []
+    rewards: list[float] = []
     steps = 0
     for i in range(n):
         action = np.asarray(action_fn(obs), dtype=np.float32)
@@ -87,7 +87,7 @@ def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: in
         if terminated or truncated:
             break
 
-    result: Dict[str, np.ndarray] = {
+    result: dict[str, np.ndarray] = {
         "reward": np.asarray([float(np.sum(rewards))]),
         "tracked": tracked[:steps],
         "drive": drive[:steps],
@@ -108,16 +108,16 @@ def rollout_episode(env, action_fn: Callable[[np.ndarray], np.ndarray], seed: in
 
 def run_experiment(
     env_id: str,
-    timesteps: Optional[int] = None,
+    timesteps: int | None = None,
     seed: int = 0,
-    algorithm: Optional[str] = None,
+    algorithm: str | None = None,
     quick: bool = False,
     baseline: str = "zero",
-    runs_dir: Optional[Path] = None,
-    evaluate_seeds: Optional[List[int]] = None,
+    runs_dir: Path | None = None,
+    evaluate_seeds: list[int] | None = None,
     verbose: bool = True,
     save_plots: bool = True,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Train an agent on an environment and persist the full experiment.
 
     Args:
@@ -140,11 +140,10 @@ def run_experiment(
     if baseline not in list_baselines():
         raise ValueError(f"unknown baseline {baseline!r}; available: {list_baselines()}")
 
-    from .registry import get_spec
     from .agents.presets import agent_config_for
+    from .registry import get_spec
 
     spec = get_spec(env_id)
-    env = make(env_id)
     cfg: AgentConfig = agent_config_for(
         env_id, timesteps=timesteps, algorithm=algorithm, seed=seed, quick=quick
     )
@@ -165,7 +164,7 @@ def run_experiment(
     baseline_robust = evaluate_over_seeds(env_factory, baseline_policy, seeds)
 
     # Training with an evaluation curve, best-model saving and checkpoints.
-    curve: List[Dict[str, float]] = []
+    curve: list[dict[str, float]] = []
     model = train(
         env_factory,
         cfg,
@@ -187,7 +186,7 @@ def run_experiment(
         "seed": cfg.seed,
         "env_description": spec.description,
     })
-    metrics: Dict[str, object] = {
+    metrics: dict[str, object] = {
         "baseline": baseline,
         "evaluate_seeds": seeds,
         "baseline_reward_mean": baseline_robust["reward_mean"],
@@ -212,7 +211,7 @@ def run_experiment(
         plot_path = artifacts.dir / f"comparison_{baseline}.png"
         plot_comparison(probe, baseline_wave, rl_wave, baseline, curve, plot_path)
 
-    summary: Dict[str, object] = {
+    summary: dict[str, object] = {
         "env_id": env_id,
         "baseline": baseline,
         "evaluate_seeds": seeds,

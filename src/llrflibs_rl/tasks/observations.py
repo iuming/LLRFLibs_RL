@@ -14,7 +14,7 @@ disturbance estimate or an observer state).
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -79,8 +79,8 @@ def build_assist_obs(
     drive_limit: float,
     step_index: int,
     episode_len: int,
-    vc_est: Optional[complex] = None,
-    f_est: Optional[complex] = None,
+    vc_est: complex | None = None,
+    f_est: complex | None = None,
 ) -> np.ndarray:
     """Observation of the PI/ADRC assist environments (17 or 21-dim).
 

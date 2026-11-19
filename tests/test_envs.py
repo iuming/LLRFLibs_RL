@@ -10,7 +10,7 @@ import pytest
 
 import llrflibs_rl as rl
 from llrflibs_rl.configs import RewardConfig
-from llrflibs_rl.configs.controller import PIControllerConfig, ADRCControllerConfig
+from llrflibs_rl.configs.controller import ADRCControllerConfig, PIControllerConfig
 
 
 def zero_action(env):

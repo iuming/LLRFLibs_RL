@@ -25,17 +25,17 @@ the zero residual action (i.e. "PI only" / "ADRC only").
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 import numpy as np
 
 __all__ = ["BASELINE_NAMES", "make_baseline_policy", "zero_policy", "list_baselines"]
 
 
-BASELINE_NAMES: List[str] = ["zero", "ff", "pi", "adrc"]
+BASELINE_NAMES: list[str] = ["zero", "ff", "pi", "adrc"]
 
 
-def list_baselines() -> List[str]:
+def list_baselines() -> list[str]:
     """Return the supported baseline names."""
     return list(BASELINE_NAMES)
 
@@ -92,7 +92,7 @@ def make_pi_residual_policy(
     Returns:
         A policy that maps an observation to a normalized I/Q residual.
     """
-    state: Dict[str, complex] = {"integral": 0.0 + 0.0j}
+    state: dict[str, complex] = {"integral": 0.0 + 0.0j}
 
     def _policy(obs: np.ndarray) -> np.ndarray:
         error = _error_of(env)
@@ -132,7 +132,7 @@ def make_adrc_like_policy(
     Returns:
         A policy that maps an observation to a normalized I/Q residual.
     """
-    state: Dict[str, complex] = {"integral": 0.0 + 0.0j, "prev": 0.0 + 0.0j}
+    state: dict[str, complex] = {"integral": 0.0 + 0.0j, "prev": 0.0 + 0.0j}
 
     def _policy(obs: np.ndarray) -> np.ndarray:
         error = _error_of(env)
@@ -179,7 +179,7 @@ def make_detuning_pi_policy(
     Returns:
         A policy mapping an observation to a normalized tuner command.
     """
-    state: Dict[str, float] = {"integral": 0.0}
+    state: dict[str, float] = {"integral": 0.0}
 
     def _policy(obs: np.ndarray) -> np.ndarray:
         detuning = env.plant.detuning

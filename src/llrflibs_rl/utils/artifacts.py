@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import matplotlib
 
@@ -47,7 +47,7 @@ class RunArtifacts:
         runs_dir:   Base directory for runs (default: ``<repo>/runs``).
     """
 
-    def __init__(self, run_name: str, runs_dir: Optional[Path] = None) -> None:
+    def __init__(self, run_name: str, runs_dir: Path | None = None) -> None:
         base = Path(runs_dir) if runs_dir is not None else _default_runs_dir()
         stamp = time.strftime("%Y%m%d-%H%M%S")
         self.dir = base / f"{_sanitize_name(run_name)}-{stamp}"
@@ -58,7 +58,7 @@ class RunArtifacts:
     # Persistence
     # ------------------------------------------------------------------
 
-    def save_config(self, config: Dict[str, Any], filename: str = "config.json") -> Path:
+    def save_config(self, config: dict[str, Any], filename: str = "config.json") -> Path:
         """Write a JSON-serializable configuration next to the other artifacts.
 
         Args:
@@ -72,7 +72,7 @@ class RunArtifacts:
         path.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
         return path
 
-    def save_metrics(self, metrics: Dict[str, float], filename: str = "metrics.json") -> Path:
+    def save_metrics(self, metrics: dict[str, float], filename: str = "metrics.json") -> Path:
         """Write evaluation metrics as JSON.
 
         Args:

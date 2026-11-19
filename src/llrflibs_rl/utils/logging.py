@@ -13,8 +13,6 @@ English so that log files stay greppable.
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence
-
 __all__ = ["print_header", "print_metrics"]
 
 
@@ -33,7 +31,7 @@ def print_header(title: str, width: int = 72) -> None:
     print("=" * width)
 
 
-def print_metrics(title: str, metrics: Dict[str, float], verbose: bool = True) -> None:
+def print_metrics(title: str, metrics: dict[str, float], verbose: bool = True) -> None:
     """Print a sorted key/value metric table.
 
     Args:

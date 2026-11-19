@@ -15,8 +15,8 @@ rewards, seeded reproducibility and (when available) the evaluation protocol
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List
 
 import numpy as np
 
@@ -38,7 +38,7 @@ class VerificationReport:
 
     env_id: str
     passed: bool = True
-    checks: Dict[str, str] = field(default_factory=dict)
+    checks: dict[str, str] = field(default_factory=dict)
     length: int = 0
 
     def fmt(self) -> str:
@@ -152,9 +152,9 @@ def verify_environment(
 
 
 def verify_all_environments(
-    env_ids: Callable[[], List[str]] = list_env_ids,
+    env_ids: Callable[[], list[str]] = list_env_ids,
     n_steps: int = 60,
-) -> List[VerificationReport]:
+) -> list[VerificationReport]:
     """Verify every registered environment.
 
     Args:

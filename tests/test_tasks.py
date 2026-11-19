@@ -8,13 +8,12 @@
 import numpy as np
 import pytest
 
+from llrflibs_rl.configs.cavity import nominal_sc_cavity
 from llrflibs_rl.configs.task import RewardConfig
 from llrflibs_rl.tasks.events import apply_drive_limits, phase_error_norm
 from llrflibs_rl.tasks.observations import build_voltage_obs
 from llrflibs_rl.tasks.reference import PulseReference
 from llrflibs_rl.tasks.rewards import RegionScaler, RewardFactory
-
-from llrflibs_rl.configs.cavity import nominal_sc_cavity
 
 
 def test_region_scaler_ramp():

@@ -14,9 +14,9 @@ at reset, and the agent may observe every cavity voltage.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
@@ -186,7 +186,7 @@ class VectorSumEnv(BaseLLRFEnv):
                                   detuning_norm.astype(np.float32)])
         return obs
 
-    def _make_info(self) -> Dict[str, float]:
+    def _make_info(self) -> dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
         err = self._sp_ref[idx] - self._plant.vector_sum
         info = {
@@ -208,9 +208,9 @@ class VectorSumEnv(BaseLLRFEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         super().reset(seed=seed)
         self._detunings = self._sample_detunings()
         self._plant.reset(self._detunings)
@@ -224,17 +224,17 @@ class VectorSumEnv(BaseLLRFEnv):
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         residual = complex(float(action[0]), float(action[1])) * self.drive_limit
         self._last_action = residual
 
         tuner_cmd = np.zeros(self.n_cavities, dtype=np.float32)
-        detuning_offsets: Optional[list[float]] = None
+        detuning_offsets: list[float] | None = None
         if self.tuner_action:
             tuner_cmd = np.clip(action[2: 2 + self.n_cavities], -1.0, 1.0)
             detuning_offsets = []
-            for tuner, cmd in zip(self._tuners, tuner_cmd):
+            for tuner, cmd in zip(self._tuners, tuner_cmd, strict=False):
                 detuning_offsets.append(float(tuner.step(cmd)))
 
         idx = min(self._step_index, self.episode_len - 1)

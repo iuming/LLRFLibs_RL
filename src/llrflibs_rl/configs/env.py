@@ -16,7 +16,6 @@ parameters live in :mod:`llrflibs_rl.configs.task`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 
@@ -66,13 +65,13 @@ class EnvConfig:
     episode_len: int = 1800
     measurement_noise_std: float = 1.0e-4
     loop_delay_steps: int = 1
-    max_drive_abs: Optional[float] = 2.0e8
-    max_drive_slew_per_step: Optional[float] = 1.0e7
+    max_drive_abs: float | None = 2.0e8
+    max_drive_slew_per_step: float | None = 1.0e7
     randomize_detuning: float = 2.0 * np.pi * 300.0
     microphonics_amp: float = 2.0 * np.pi * 200.0
     microphonics_freq: float = 250.0
     microphonics_random_phase: bool = False
-    reflected_power_limit: Optional[float] = None
+    reflected_power_limit: float | None = None
     reflected_power_trip_steps: int = 10
     trip_penalty: float = 0.0
     half_bw_drift_frac: float = 0.0
@@ -124,7 +123,7 @@ class ResidualEnvConfig(EnvConfig):
     """
 
     drive_limit_ratio: float = 0.10
-    reference_detuning: Optional[float] = None
+    reference_detuning: float | None = None
     drive_effort_reference: str = "ff"
     lorentz_k: float = 0.0
     lorentz_tau: float = 5.0e-4
@@ -258,7 +257,7 @@ class VectorSumEnvConfig(EnvConfig):
     """
 
     cavities: list[CavityParams] = field(default_factory=list)
-    reference_detuning: Optional[float] = None
+    reference_detuning: float | None = None
     drive_limit_ratio: float = 0.30
     obs_per_cavity: bool = True
     tuner_action: bool = False

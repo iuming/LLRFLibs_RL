@@ -14,8 +14,6 @@ episode, which keeps the plant simulation deterministic within one episode.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Union
-
 import numpy as np
 
 __all__ = [
@@ -159,8 +157,8 @@ def build_disturbance_wave(
     frequency: float = 250.0,
     phase: float = 0.0,
     offset: float = 0.0,
-    onset: Optional[float] = None,
-    sweep_end: Optional[float] = None,
+    onset: float | None = None,
+    sweep_end: float | None = None,
 ) -> np.ndarray:
     """Build a disturbance waveform by name.
 

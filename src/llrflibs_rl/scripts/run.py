@@ -25,9 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
 
-import numpy as np
 from stable_baselines3 import PPO, SAC
 
 from .. import list_env_ids, make
@@ -110,7 +108,7 @@ def _cmd_list(_args: argparse.Namespace) -> None:
         print(env_id)
 
 
-def _load_experiment(path: str) -> Dict[str, object]:
+def _load_experiment(path: str) -> dict[str, object]:
     """Load an experiment YAML into a flat parameter dictionary.
 
     Args:
@@ -129,7 +127,7 @@ def _load_experiment(path: str) -> Dict[str, object]:
 
 
 def _cmd_train(args: argparse.Namespace) -> None:
-    overrides: Dict[str, object] = {}
+    overrides: dict[str, object] = {}
     if args.config:
         overrides = _load_experiment(args.config)
     env_id = args.env or str(overrides.get("env", "DualLoop-v0"))
@@ -156,7 +154,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
 def _cmd_eval(args: argparse.Namespace) -> None:
     from ..controllers.baselines import make_baseline_policy
 
-    env = make(args.env)
+    make(args.env)  # validate that the environment id is registered
     try:
         model = PPO.load(args.model)
     except Exception:
@@ -183,7 +181,7 @@ def _cmd_benchmark(args: argparse.Namespace) -> None:
     env_ids = [e.strip() for e in args.envs.split(",") if e.strip()] if args.envs else list_env_ids()
     for env_id in env_ids:
         get_spec(env_id)  # validate id early
-    rows: List[Dict[str, object]] = []
+    rows: list[dict[str, object]] = []
     for env_id in env_ids:
         print_header(f"Benchmarking {env_id}  (baseline={args.baseline}, seeds={evaluate_seeds})")
         summary = run_experiment(
@@ -195,7 +193,7 @@ def _cmd_benchmark(args: argparse.Namespace) -> None:
             evaluate_seeds=evaluate_seeds,
             verbose=False,
         )
-        row: Dict[str, object] = {
+        row: dict[str, object] = {
             "env": env_id,
             "baseline_reward": summary["baseline_reward"],
             "rl_reward": summary["rl_reward"],
@@ -229,7 +227,7 @@ def _cmd_verify(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
 
-def _env_list(envs: Optional[str]) -> List[str]:
+def _env_list(envs: str | None) -> list[str]:
     if envs is None:
         return list_env_ids()
     return [e.strip() for e in envs.split(",") if e.strip()]
@@ -286,7 +284,7 @@ def _cmd_zoo_latest(args: argparse.Namespace) -> None:
     print(meta or f"loaded {args.env} model")
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """CLI entry point.
 
     Args:

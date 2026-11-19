@@ -14,8 +14,8 @@ beam conditions (beam-on, trips, partial fill) can be configured declaratively.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class BeamSegment:
             raise ValueError("beam level must lie in (0, 1]")
 
 
-def pulse_beam_schedule(onset_sample: int, episode_len: int) -> "BeamSchedule":
+def pulse_beam_schedule(onset_sample: int, episode_len: int) -> BeamSchedule:
     """Beam present from ``onset_sample`` until the end of the episode.
 
     Args:
@@ -69,7 +69,7 @@ class BeamSchedule:
         self.segments = list(segments)
 
     @classmethod
-    def from_steps(cls, steps: Sequence[Tuple[int, int, float]]) -> "BeamSchedule":
+    def from_steps(cls, steps: Sequence[tuple[int, int, float]]) -> BeamSchedule:
         """Build a schedule from ``(from_sample, to_sample, level)`` tuples."""
         return cls([BeamSegment(int(f), int(t), float(lv)) for f, t, lv in steps])
 

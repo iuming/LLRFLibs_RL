@@ -13,8 +13,7 @@ environments and as evaluation baselines.  They wrap the primitives in
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -38,7 +37,7 @@ class PIControllerConfig:
 
     kp: float = 0.8
     ki: float = 2.0e5
-    notch_conf: Optional[Dict[str, List[float]]] = None
+    notch_conf: dict[str, list[float]] | None = None
 
     def validate(self) -> None:
         if self.kp < 0 or self.ki < 0:

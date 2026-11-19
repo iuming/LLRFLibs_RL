@@ -14,8 +14,6 @@ quantities into the per-step reward of an environment.  The weights live in
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 
 from ..configs.task import RewardConfig
@@ -42,7 +40,7 @@ class RegionScaler:
         self,
         filling_len: int,
         flattop_len: int,
-        scales: Tuple[float, float, float],
+        scales: tuple[float, float, float],
         ramp: int = 0,
     ) -> None:
         self.filling_len = int(filling_len)
@@ -128,9 +126,9 @@ class RewardFactory:
         residual: complex,
         sat_excess: float = 0.0,
         slew_excess: float = 0.0,
-        detuning: Optional[float] = None,
-        detuning_limit: Optional[float] = None,
-        actuator_state: Optional[float] = None,
+        detuning: float | None = None,
+        detuning_limit: float | None = None,
+        actuator_state: float | None = None,
     ) -> float:
         """Compute the reward of one step.
 

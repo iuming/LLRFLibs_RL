@@ -6,7 +6,6 @@
 """Tests of the engineering toolkit: verifier, api, plotting, model zoo,
 beam schedules, disturbances and the Lorentz drift model."""
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +14,6 @@ import pytest
 import llrflibs_rl as rl
 from llrflibs_rl.agents import AgentConfig, train
 from llrflibs_rl.agents.model_zoo import ModelZoo
-from llrflibs_rl.evaluation import action_from_model
 from llrflibs_rl.plants.beam_schedule import BeamSchedule, BeamSegment
 from llrflibs_rl.plants.disturbance import build_disturbance_wave
 from llrflibs_rl.plants.lorentz import LorentzDriftDetuning
@@ -54,7 +52,7 @@ def test_verify_all_environments_passes():
 def test_api_facade_exposes_common_functions():
     from llrflibs_rl import api
 
-    env = api.make("CavityVoltage-v0")
+    api.make("CavityVoltage-v0")
     cfg = api.agent_config_for("CavityVoltage-v0", timesteps=256)
     model = api.train(lambda: api.make("CavityVoltage-v0"), cfg)
     metrics = api.evaluate_episode(api.make("CavityVoltage-v0"), api.action_from_model(model))
@@ -105,7 +103,7 @@ def test_gymnasium_parity_attributes_and_wrappers():
 
     wrapped = rl.make("CavityVoltage-v0", wrappers=[lambda e: TimeLimit(e, max_episode_steps=50)])
     assert wrapped.unwrapped is not None  # wrapper chain can be unwrapped
-    assert getattr(wrapped, "spec") is not None
+    assert wrapped.spec is not None
     obs, _ = wrapped.reset(seed=0)
     steps = 0
     for _ in range(200):

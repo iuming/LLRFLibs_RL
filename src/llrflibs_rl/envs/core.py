@@ -14,8 +14,6 @@ environments stay thin and consistent.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 import gymnasium as gym
 import numpy as np
 
@@ -91,7 +89,7 @@ class BaseLLRFEnv(gym.Env):
 
     def _init_drive_history(self) -> None:
         """Reset the drive-delay buffer (call in ``reset``)."""
-        self._drive_cmd_hist: List[complex] = []
+        self._drive_cmd_hist: list[complex] = []
 
     def _clamp_action(self, action: np.ndarray) -> np.ndarray:
         """Clip an action to the action space bounds.
@@ -124,7 +122,7 @@ class BaseLLRFEnv(gym.Env):
     # Gymnasium metadata helpers
     # ------------------------------------------------------------------
 
-    def render(self, mode: Optional[str] = None) -> None:
+    def render(self, mode: str | None = None) -> None:
         """Rendering is not implemented for the LLRF environments."""
         raise NotImplementedError("LLRF environments do not implement rendering.")
 

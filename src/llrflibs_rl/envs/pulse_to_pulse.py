@@ -20,7 +20,7 @@ Level-L4 environments: beam-loading transients and pulse-to-pulse adaptation.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -60,9 +60,9 @@ class BeamLoadingConfig(ResidualEnvConfig):
 
     beam_current_plant: float = 8e-3
     beam_phase_deg_plant: float = 0.0
-    beam_on_start: Optional[int] = None
+    beam_on_start: int | None = None
     reference_beam_current: float = 0.0
-    beam_schedule: Optional[BeamSchedule] = None
+    beam_schedule: BeamSchedule | None = None
 
     def validate(self) -> None:
         super().validate()
@@ -166,7 +166,7 @@ class AdaptivePulseConfig:
     n_pulses: int = 10
     detuning_drift_amp: float = 2.0 * np.pi * 4.0e2
     randomize_detuning: float = 0.0
-    reference_detuning: Optional[float] = None
+    reference_detuning: float | None = None
     action_gain_scale: float = 0.4
     reward_error_weight: float = 10.0
     reward_drive_weight: float = 0.5
@@ -236,8 +236,8 @@ class AdaptivePulseEnv(gym.Env):
         n_obs = 4 + self.n_basis
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(n_obs,), dtype=np.float32)
 
-        self.pulse_reward_history: List[float] = []
-        self.pulse_error_history: List[complex] = []
+        self.pulse_reward_history: list[float] = []
+        self.pulse_error_history: list[complex] = []
         self._prev_drive_pen = 0.0
         self._prev_fferr = 0.0 + 0.0j
         self._prev_proj = np.zeros(self.n_basis, dtype=np.float32)
@@ -254,7 +254,7 @@ class AdaptivePulseEnv(gym.Env):
                 return k
         return self.n_basis - 1
 
-    def _flattop_error_projection(self, error_wave: np.ndarray) -> Tuple[complex, np.ndarray]:
+    def _flattop_error_projection(self, error_wave: np.ndarray) -> tuple[complex, np.ndarray]:
         """Return the flat-top mean error and its per-segment projection."""
         cav = self.cavity
         sl = slice(cav.filling_len, min(cav.filling_len + cav.flattop_len, self.pulse_len))
@@ -268,7 +268,7 @@ class AdaptivePulseEnv(gym.Env):
                 proj[k] = float(np.mean(np.abs(seg)) / self.obs_scale)
         return mean_err, proj
 
-    def _simulate_pulse(self, gains: np.ndarray) -> Dict[str, float]:
+    def _simulate_pulse(self, gains: np.ndarray) -> dict[str, float]:
         """Run one pulse and return its metrics.
 
         Args:
@@ -334,7 +334,7 @@ class AdaptivePulseEnv(gym.Env):
         obs.extend(float(v) for v in self._prev_proj)
         return np.asarray(obs, dtype=np.float32)
 
-    def _make_info(self) -> Dict[str, float]:
+    def _make_info(self) -> dict[str, float]:
         return {
             "pulse_index": float(self._pulse_index),
             "pulse_reward": float(self.pulse_reward_history[-1]) if self.pulse_reward_history else 0.0,
@@ -344,9 +344,9 @@ class AdaptivePulseEnv(gym.Env):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         super().reset(seed=seed)
         offset = (
             float(self.np_random.uniform(-self.config.randomize_detuning, self.config.randomize_detuning))
@@ -362,7 +362,7 @@ class AdaptivePulseEnv(gym.Env):
         self._prev_drive_pen = 0.0
         return self._get_obs(), self._make_info()
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = np.clip(np.asarray(action, dtype=np.float32), -1.0, 1.0).reshape(self.n_basis)
         gains = 1.0 + action * self.config.action_gain_scale
         metrics = self._simulate_pulse(gains)

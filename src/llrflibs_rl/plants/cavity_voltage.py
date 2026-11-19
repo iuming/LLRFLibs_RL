@@ -15,10 +15,7 @@ stepping, which is what the microphonics / Lorentz-type tasks need).
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
-
 from llrflibs.rf_control import ss_discrete
 from llrflibs.rf_sim import cav_ss, sim_ncav_step, sim_ncav_step_simple
 
@@ -52,8 +49,8 @@ class CavityVoltagePlant:
         self.detuning = float(detuning)
         self._build_plant(self.detuning)
 
-        self._state_rf: Optional[np.matrix] = None
-        self._state_bm: Optional[np.matrix] = None
+        self._state_rf: np.matrix | None = None
+        self._state_bm: np.matrix | None = None
         self._vc = 0.0 + 0.0j
         self._vr = 0.0 + 0.0j
 
@@ -105,10 +102,10 @@ class CavityVoltagePlant:
     def step(
         self,
         drive: complex,
-        beam: Optional[complex] = None,
-        detuning: Optional[float] = None,
-        half_bw: Optional[float] = None,
-    ) -> Tuple[complex, complex]:
+        beam: complex | None = None,
+        detuning: float | None = None,
+        half_bw: float | None = None,
+    ) -> tuple[complex, complex]:
         """Advance the cavity one sample.
 
         Args:

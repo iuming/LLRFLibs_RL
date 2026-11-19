@@ -19,9 +19,8 @@ disturbance.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
@@ -158,7 +157,7 @@ class FrequencyEnv(BaseLLRFEnv):
         """Disturbance waveform of the current episode, rad/s."""
         return self._dist_wave
 
-    def _make_info(self) -> Dict[str, float]:
+    def _make_info(self) -> dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
         return {
             "step_index": float(self._step_index),
@@ -175,9 +174,9 @@ class FrequencyEnv(BaseLLRFEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         super().reset(seed=seed)
         offset = (
             float(self.np_random.uniform(-self.env_cfg.randomize_detuning, self.env_cfg.randomize_detuning))
@@ -190,7 +189,7 @@ class FrequencyEnv(BaseLLRFEnv):
         self._step_index = 0
         return self._get_obs(), self._make_info()
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         act_state = self._actuator.step(float(action[0]))
 
@@ -347,7 +346,7 @@ class DualLoopEnv(BaseLLRFEnv):
             episode_len=self.episode_len,
         )
 
-    def _make_info(self) -> Dict[str, float]:
+    def _make_info(self) -> dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
         err = self._reference.sp_at(idx) - self._plant.vc
         return {
@@ -369,9 +368,9 @@ class DualLoopEnv(BaseLLRFEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         super().reset(seed=seed)
         offset = (
             float(self.np_random.uniform(-self.env_cfg.randomize_detuning, self.env_cfg.randomize_detuning))
@@ -390,7 +389,7 @@ class DualLoopEnv(BaseLLRFEnv):
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         act_state = self._actuator.step(float(action[0]))
 

@@ -15,10 +15,7 @@ controller.  They run sample-by-sample and keep their own discrete state.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
-
 from llrflibs.rf_control import ADRC_control_step, ADRC_controller, basic_rf_controller, control_step, ss_discrete
 
 from ..configs.controller import ADRCControllerConfig, PIControllerConfig
@@ -62,7 +59,7 @@ class ComplexPIController:
         """Reset the controller integrator state."""
         self._state_k: np.matrix = _state_matrix(self._Bkd.shape[0])
 
-    def step(self, error: complex, feedforward: complex) -> Tuple[complex, complex]:
+    def step(self, error: complex, feedforward: complex) -> tuple[complex, complex]:
         """Execute one controller step.
 
         Args:
@@ -118,9 +115,9 @@ class ScheduledPIController:
         self,
         error: complex,
         feedforward: complex,
-        kp: Optional[float] = None,
-        ki: Optional[float] = None,
-    ) -> Tuple[complex, complex]:
+        kp: float | None = None,
+        ki: float | None = None,
+    ) -> tuple[complex, complex]:
         """Execute one controller step with (optionally scheduled) gains.
 
         Args:
@@ -192,7 +189,7 @@ class ADRCController:
         vc_meas: complex,
         vf_meas: complex,
         feedforward: complex,
-    ) -> Tuple[complex, complex, complex, complex]:
+    ) -> tuple[complex, complex, complex, complex]:
         """Execute one ADRC step.
 
         Args:

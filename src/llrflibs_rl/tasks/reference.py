@@ -15,10 +15,7 @@ the beam model stay mutually consistent.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
-
 from llrflibs.rf_control import cav_sp_ff
 
 from ..configs.cavity import CavityParams
@@ -42,7 +39,7 @@ class PulseReference:
         cavity: CavityParams,
         Ts: float,
         episode_len: int,
-        reference_detuning: Optional[float] = None,
+        reference_detuning: float | None = None,
     ) -> None:
         self.cavity = cavity
         self.Ts = float(Ts)

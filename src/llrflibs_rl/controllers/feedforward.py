@@ -14,8 +14,6 @@ feedforward" baseline that RL residual controllers are compared against.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from ..tasks.reference import PulseReference
@@ -62,7 +60,7 @@ class PTypeILC:
         self,
         episode_len: int,
         gain: float = 0.3,
-        drive_limit: Optional[float] = None,
+        drive_limit: float | None = None,
     ) -> None:
         self.episode_len = int(episode_len)
         self.gain = float(gain)

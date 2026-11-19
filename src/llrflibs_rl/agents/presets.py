@@ -14,7 +14,6 @@ boom-and-bust training budgets across tasks.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Dict, Optional
 
 from ..configs.agent import AgentConfig
 from ..registry import recommended_timesteps
@@ -26,7 +25,7 @@ __all__ = ["agent_config_for"]
 #: Off-policy variants use train_freq=gradient_steps=64, batch_size=256.
 _OFFPOLICY = dict(train_freq=64, gradient_steps=64, batch_size=256)
 
-_ENV_AGENT_OVERRIDES: Dict[str, Dict[str, object]] = {
+_ENV_AGENT_OVERRIDES: dict[str, dict[str, object]] = {
     # Off-policy SAC is stable and clearly beats PPO on the slow-tuner
     # cooperative tasks and the per-cavity tuner variant.
     "DualLoop-v0": {"algorithm": "sac", **_OFFPOLICY},
@@ -39,8 +38,8 @@ _ENV_AGENT_OVERRIDES: Dict[str, Dict[str, object]] = {
 
 def agent_config_for(
     env_id: str,
-    timesteps: Optional[int] = None,
-    algorithm: Optional[str] = None,
+    timesteps: int | None = None,
+    algorithm: str | None = None,
     seed: int = 0,
     quick: bool = False,
     verbose: int = 0,

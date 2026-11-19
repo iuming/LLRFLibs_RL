@@ -14,7 +14,6 @@ in :mod:`llrflibs_rl.agents.presets`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 __all__ = ["AgentConfig"]
 
@@ -58,9 +57,9 @@ class AgentConfig:
     normalize_obs: bool = False
     n_envs: int = 1
     policy: str = "MlpPolicy"
-    policy_kwargs: Optional[Dict[str, object]] = None
+    policy_kwargs: dict[str, object] | None = None
     verbose: int = 0
-    model_name: Optional[str] = None
+    model_name: str | None = None
 
     def validate(self) -> None:
         """Raise on inconsistent configuration."""

@@ -7,6 +7,7 @@
 
 import numpy as np
 
+from llrflibs_rl.configs.cavity import nominal_sc_cavity
 from llrflibs_rl.configs.controller import PIControllerConfig, TunerActuatorConfig
 from llrflibs_rl.controllers import (
     ADRCController,
@@ -17,8 +18,6 @@ from llrflibs_rl.controllers import (
     ZeroActuator,
 )
 from llrflibs_rl.tasks.reference import PulseReference
-
-from llrflibs_rl.configs.cavity import nominal_sc_cavity
 
 
 def test_complex_pi_responses_to_error():

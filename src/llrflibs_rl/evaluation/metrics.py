@@ -15,14 +15,14 @@ episodes so that conclusions survive randomness.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 import numpy as np
 
 __all__ = ["evaluate_episode", "evaluate_over_seeds", "action_from_model", "cross_check_with_sb3"]
 
 
-def _wave(env, name: str) -> Optional[np.ndarray]:
+def _wave(env, name: str) -> np.ndarray | None:
     """Fetch a waveform currently stored on the environment (if any)."""
     value = getattr(env, name, None)
     if value is None:
@@ -33,8 +33,8 @@ def _wave(env, name: str) -> Optional[np.ndarray]:
 def evaluate_episode(
     env,
     action_fn: Callable[[np.ndarray], np.ndarray],
-    seed: Optional[int] = None,
-) -> Dict[str, float]:
+    seed: int | None = None,
+) -> dict[str, float]:
     """Roll out one episode and compute physics-aware metrics.
 
     Args:
@@ -58,7 +58,7 @@ def evaluate_episode(
             break
     n = len(rewards)
 
-    metrics: Dict[str, float] = {
+    metrics: dict[str, float] = {
         "reward": float(np.sum(rewards)),
         "length": float(n),
     }
@@ -119,7 +119,7 @@ def cross_check_with_sb3(
     env_factory: Callable,
     n_eval_episodes: int = 3,
     rel_tolerance: float = 0.05,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Cross-check our evaluation metrics against ``stable_baselines3``.
 
     Runs the package evaluation on one seed and SB3's ``evaluate_policy`` on
@@ -157,8 +157,8 @@ def cross_check_with_sb3(
 def evaluate_over_seeds(
     env_factory: Callable,
     action_fn: Callable[[np.ndarray], np.ndarray],
-    seeds: List[int],
-) -> Dict[str, float]:
+    seeds: list[int],
+) -> dict[str, float]:
     """Evaluate a policy over multiple seeds (i.e. random disturbances).
 
     Args:
@@ -169,13 +169,13 @@ def evaluate_over_seeds(
     Returns:
         Aggregated metric dictionary with ``mean`` and ``std`` suffixes.
     """
-    collected: Dict[str, List[float]] = {}
+    collected: dict[str, list[float]] = {}
     for seed in seeds:
         env = env_factory()
         for key, value in evaluate_episode(env, action_fn, seed=seed).items():
             collected.setdefault(key, []).append(float(value))
 
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     for key, values in collected.items():
         arr = np.asarray(values)
         result[f"{key}_mean"] = float(np.mean(arr))

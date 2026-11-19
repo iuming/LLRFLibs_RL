@@ -18,9 +18,9 @@ subcommand renders comparison figures from the latest zoo models.
 
 from __future__ import annotations
 
+import builtins
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from stable_baselines3 import PPO, SAC, TD3
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -45,7 +45,7 @@ class ModelZoo:
         zoo_dir: Directory holding the models (defaults to the repo ``models/``).
     """
 
-    def __init__(self, zoo_dir: Optional[Path] = None) -> None:
+    def __init__(self, zoo_dir: Path | None = None) -> None:
         self.zoo_dir = (zoo_dir or default_zoo_dir()).resolve()
         self.zoo_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,7 +63,7 @@ class ModelZoo:
     # Save / load
     # ------------------------------------------------------------------
 
-    def save(self, model, env_id: str, tag: Optional[str] = None, **extra) -> Path:
+    def save(self, model, env_id: str, tag: str | None = None, **extra) -> Path:
         """Save a trained model plus its metadata.
 
         When the model carries a ``VecNormalize`` wrapper (observation
@@ -128,19 +128,19 @@ class ModelZoo:
                 model.set_env(vn)
         return model
 
-    def metadata(self, env_id: str, tag: str = "best") -> Dict[str, object]:
+    def metadata(self, env_id: str, tag: str = "best") -> dict[str, object]:
         """Return the metadata of one saved model."""
         path = self._meta_path(env_id, tag)
         if not path.exists():
             return {}
         return json.loads(path.read_text(encoding="utf-8"))
 
-    def list(self) -> List[Dict[str, object]]:
+    def list(self) -> builtins.list[dict[str, object]]:
         """List every saved model (sorted by modification time, newest first)."""
         rows = []
         for path in sorted(self.zoo_dir.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True):
             meta_path = path.with_suffix(".json")
-            meta: Dict[str, object] = {}
+            meta: dict[str, object] = {}
             if meta_path.exists():
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
             meta["model_path"] = str(path)

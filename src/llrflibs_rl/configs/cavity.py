@@ -15,8 +15,8 @@ plant layer (:mod:`llrflibs_rl.plants`), the reference generator
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -56,8 +56,8 @@ class CavityParams:
     flattop_len: int = 800
     beam_current: float = 0.0
     beam_phase_deg: float = 0.0
-    passband_modes: Optional[Dict[str, Sequence[float]]] = None
-    mech_modes: Optional[Dict[str, Sequence[float]]] = None
+    passband_modes: dict[str, Sequence[float]] | None = None
+    mech_modes: dict[str, Sequence[float]] | None = None
 
     def __post_init__(self) -> None:
         """Validate the parameter ranges eagerly so that errors surface early."""
@@ -91,7 +91,7 @@ class CavityParams:
         """Whether mechanical modes are defined."""
         return self.mech_modes is not None
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to a JSON-friendly dict (lists instead of tuples)."""
         data = {
             k: (list(v) if isinstance(v, (tuple, list)) and not isinstance(v, str) else v)
@@ -100,12 +100,12 @@ class CavityParams:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "CavityParams":
+    def from_dict(cls, data: dict[str, object]) -> CavityParams:
         """Reconstruct from the output of :meth:`to_dict`."""
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
-def _default_mech_modes() -> Dict[str, List[float]]:
+def _default_mech_modes() -> dict[str, list[float]]:
     """Return the default Lorentz-force mechanical modes of an SC cavity."""
     return {
         "f": [280.0, 341.0, 460.0, 487.0, 618.0],
@@ -142,7 +142,7 @@ def nominal_sc_cavity(
     Returns:
         A configured :class:`CavityParams`.
     """
-    modes: Optional[Dict[str, List[float]]] = _default_mech_modes() if with_mech_modes else None
+    modes: dict[str, list[float]] | None = _default_mech_modes() if with_mech_modes else None
     return CavityParams(
         half_bw=2.0 * np.pi * 216.0 * 0.5,
         vc_target=vc_target,

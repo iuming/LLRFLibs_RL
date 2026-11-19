@@ -14,7 +14,7 @@ vector sum of the cavity voltages.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -52,7 +52,7 @@ class VectorModulePlant:
         self.reference_detuning = float(reference_detuning)
         self._validate_layout()
 
-        self._plants: List[CavityVoltagePlant] = []
+        self._plants: list[CavityVoltagePlant] = []
         self.reset([reference_detuning] * self.n_cavities)
         self._vs = 0.0 + 0.0j
         self._vr_sum = 0.0 + 0.0j
@@ -95,7 +95,7 @@ class VectorModulePlant:
             raise ValueError("detunings length must match the number of cavities.")
         self.detunings = [float(d) for d in detunings]
         self._plants = [
-            CavityVoltagePlant(cav, self.Ts, det) for cav, det in zip(self.cavities, self.detunings)
+            CavityVoltagePlant(cav, self.Ts, det) for cav, det in zip(self.cavities, self.detunings, strict=False)
         ]
         for plant in self._plants:
             plant.reset()
@@ -108,8 +108,8 @@ class VectorModulePlant:
         self,
         drive: complex,
         beam: complex,
-        detuning_offsets: Optional[Sequence[float]] = None,
-    ) -> Tuple[complex, complex, List[complex], List[complex]]:
+        detuning_offsets: Sequence[float] | None = None,
+    ) -> tuple[complex, complex, list[complex], list[complex]]:
         """Advance every cavity with the shared drive.
 
         Args:
@@ -124,8 +124,8 @@ class VectorModulePlant:
         """
         if detuning_offsets is not None and len(detuning_offsets) != self.n_cavities:
             raise ValueError("detuning_offsets length must match the number of cavities.")
-        vc_list: List[complex] = []
-        vr_list: List[complex] = []
+        vc_list: list[complex] = []
+        vr_list: list[complex] = []
         vs = 0.0 + 0.0j
         vr_sum = 0.0 + 0.0j
         for k, plant in enumerate(self._plants):
@@ -159,12 +159,12 @@ class VectorModulePlant:
         return self._vr_sum
 
     @property
-    def vc_list(self) -> List[complex]:
+    def vc_list(self) -> list[complex]:
         """Latest per-cavity voltages (one entry per cavity)."""
         return list(self._vc_list)
 
     @property
-    def vr_list(self) -> List[complex]:
+    def vr_list(self) -> list[complex]:
         """Latest per-cavity reflected voltages."""
         return list(self._vr_list)
 

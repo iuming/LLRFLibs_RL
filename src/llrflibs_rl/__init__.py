@@ -25,9 +25,19 @@ way to obtain one is::
     env = llrflibs_rl.make("DualLoop-v0")
 """
 
+# Importing ``envs`` registers the built-in environments; keep it explicit.
+from . import (
+    agents,
+    configs,
+    controllers,
+    envs,  # noqa: E402  (side-effect: registration)
+    evaluation,
+    plants,
+    scenario,  # noqa: E402  (scenario flow used by examples / CLI)
+    tasks,
+    utils,
+)
 from ._version import __version__
-from . import agents, configs, controllers, evaluation, plants, tasks, utils
-from . import scenario  # noqa: E402  (scenario flow used by examples / CLI)
 from .agents import AgentConfig, agent_config_for, train, train_ppo, train_sac
 from .configs import (
     ADRCControllerConfig,
@@ -45,9 +55,6 @@ from .configs import (
 )
 from .evaluation import action_from_model, evaluate_episode, evaluate_over_seeds
 from .registry import EnvSpec, get_spec, list_env_ids, make, recommended_timesteps, register
-
-# Importing ``envs`` registers the built-in environments; keep it explicit.
-from . import envs  # noqa: E402  (side-effect: registration)
 
 __all__ = [
     # registry

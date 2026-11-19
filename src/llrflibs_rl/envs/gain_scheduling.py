@@ -16,10 +16,9 @@ channel through which RL can genuinely improve a classical LLRF loop
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
@@ -105,7 +104,7 @@ class GainSchedulingEnv(CavityVoltageEnv):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _gains_from_action(self, action: np.ndarray) -> Tuple[float, float]:
+    def _gains_from_action(self, action: np.ndarray) -> tuple[float, float]:
         scale = float(self.gs_cfg.gain_scale_factor)
         kp = self.gs_cfg.kp_nom * scale ** float(np.clip(action[0], -1.0, 1.0))
         ki = self.gs_cfg.ki_nom * scale ** float(np.clip(action[1], -1.0, 1.0))
@@ -143,9 +142,9 @@ class GainSchedulingEnv(CavityVoltageEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         # Reset the controller state BEFORE super().reset() captures the first
         # observation (see PIAssistEnv.reset).
         self._controller.reset()
@@ -161,7 +160,7 @@ class GainSchedulingEnv(CavityVoltageEnv):
         self._drive_rl = 0.0 + 0.0j
         return obs, info
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         self._last_gain_action = action
         self._kp, self._ki = self._gains_from_action(action)

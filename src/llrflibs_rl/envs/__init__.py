@@ -11,6 +11,8 @@ registry (:mod:`llrflibs_rl.registry`), so ``llrflibs_rl.make(...)`` works
 once the package is imported (the top-level ``llrflibs_rl`` import does that).
 """
 
+# Register every built-in environment in the package registry.
+from .. import registry as _registry
 from .core import BaseLLRFEnv
 from .gain_scheduling import GainSchedulingEnv
 from .pulse_to_pulse import AdaptivePulseEnv, BeamLoadingEnv
@@ -18,9 +20,6 @@ from .resonance import DualLoopEnv, FrequencyEnv
 from .vectormodule import VectorSumEnv
 from .voltage import ADRCAssistEnv, CavityVoltageEnv, PIAssistEnv
 from .wrappers import EpisodicMonitor
-
-# Register every built-in environment in the package registry.
-from .. import registry as _registry
 
 _registry.register(
     "CavityVoltage-v0",

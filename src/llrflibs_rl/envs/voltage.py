@@ -19,9 +19,8 @@ changes.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
@@ -90,7 +89,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32)
 
-        self._detuning_wave: Optional[np.ndarray] = None
+        self._detuning_wave: np.ndarray | None = None
         self._last_action = 0.0 + 0.0j
         self._drive_total = 0.0 + 0.0j
         self._step_index = 0
@@ -130,7 +129,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         if self.env_cfg.lorentz_k > 0.0 and self._detuning_wave is None:
             self._detuning_wave = np.full(self.episode_len, float(detuning))
 
-    def _current_detuning(self, idx: int) -> Optional[float]:
+    def _current_detuning(self, idx: int) -> float | None:
         """Detuning of the current sample (base wave + dynamic Lorentz)."""
         dw = float(self._detuning_wave[idx]) if self._detuning_wave is not None else None
         if self._lorentz is not None:
@@ -138,7 +137,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
             return base + self._lorentz.step(self._plant.vc)
         return dw
 
-    def _current_half_bw(self) -> Optional[float]:
+    def _current_half_bw(self) -> float | None:
         """Half bandwidth of the current sample (``None`` when not drifting)."""
         if self.env_cfg.half_bw_drift_frac <= 0.0:
             return None
@@ -188,7 +187,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         """
         return self._reference.vb_at(step_index)
 
-    def _make_info(self) -> Dict[str, float]:
+    def _make_info(self) -> dict[str, float]:
         idx = min(self._step_index, self.episode_len - 1)
         err = self._reference.sp_at(idx) - self._plant.vc
         return {
@@ -233,9 +232,9 @@ class CavityVoltageEnv(BaseLLRFEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         super().reset(seed=seed)
         self._episode_detuning = self._sample_episode_detuning()
         self._plant = CavityVoltagePlant(self.cavity, self.env_cfg.Ts, self._episode_detuning)
@@ -255,7 +254,7 @@ class CavityVoltageEnv(BaseLLRFEnv):
         self._init_drive_history()
         return self._get_obs(), self._make_info()
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         residual = complex(float(action[0]), float(action[1])) * self.drive_limit
         self._last_action = residual
@@ -330,9 +329,9 @@ class PIAssistEnv(CavityVoltageEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         # Reset the controller state BEFORE super().reset() captures the first
         # observation, otherwise the first-frame feedback is stale.
         self._controller.reset()
@@ -368,7 +367,7 @@ class PIAssistEnv(CavityVoltageEnv):
             episode_len=self.episode_len,
         )
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         self._drive_rl = complex(float(action[0]), float(action[1])) * self.drive_limit
 
@@ -447,9 +446,9 @@ class ADRCAssistEnv(CavityVoltageEnv):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, float]]:
         # Reset the controller state BEFORE super().reset() captures the first
         # observation (see PIAssistEnv.reset).
         self._controller.reset()
@@ -491,7 +490,7 @@ class ADRCAssistEnv(CavityVoltageEnv):
             f_est=self._f_est,
         )
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, float]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         action = self._clamp_action(action)
         self._drive_rl = complex(float(action[0]), float(action[1])) * self.drive_limit
 

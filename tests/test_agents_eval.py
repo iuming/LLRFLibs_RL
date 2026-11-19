@@ -6,7 +6,6 @@
 """Training and evaluation smoke tests (small budgets)."""
 
 import numpy as np
-import pytest
 
 import llrflibs_rl as rl
 from llrflibs_rl.agents import agent_config_for, train
@@ -50,6 +49,7 @@ def test_evaluate_over_seeds():
 
 def test_run_artifacts():
     from pathlib import Path
+
     from llrflibs_rl.utils import RunArtifacts
 
     tmp = Path("tests/.tmp_artifacts")
